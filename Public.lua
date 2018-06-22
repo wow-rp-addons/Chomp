@@ -637,22 +637,23 @@ function AddOn_Chomp.SmartAddonWhisper(prefix, text, target, priority, queue)
 	return sentBnet, sentLogged, sentInGame
 end
 
-function AddOn_Chomp.GetTargetCapability(prefix, target)
+function AddOn_Chomp.CheckReport(prefix, target)
 	local prefixType = type(prefix)
 	local prefixData = Internal.PrefixMap[prefix]
 	if prefixType ~= "string" and prefixType ~= "table" then
-		error("AddOn_Chomp.GetTargetCapability(): prefix: expected string or table, got " .. prefixType, 2)
+		error("AddOn_Chomp.ReportTarget(): prefix: expected string or table, got " .. prefixType, 2)
 	elseif type(target) ~= "string" then
-		error("AddOn_Chomp.GetTargetCapability(): target: expected string, got " .. type(target), 2)
+		error("AddOn_Chomp.ReportTarget(): target: expected string, got " .. type(target), 2)
 	elseif not prefixData then
-		error("AddOn_Chomp.GetTargetCapability(): prefix: prefix has not been registered with Chomp", 2)
+		error("AddOn_Chomp.ReportTarget(): prefix: prefix has not been registered with Chomp", 2)
 	end
 	if prefixData.BattleNet[target] then
-		return "BattleNet"
+		return false, "BattleNet"
 	elseif prefixData.Logged[target] then
-		return "Logged"
+		-- TODO: Check reportability from Blizzard.
+		return true, "Logged"
 	end
-	return "InGame"
+	return false, "InGame"
 end
 
 function AddOn_Chomp.ReportTarget(prefix, target)
