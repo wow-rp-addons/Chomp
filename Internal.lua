@@ -18,7 +18,7 @@ local VERSION = 0
 
 if IsLoggedIn() then
 	error(("Chomp Message Library (embedded: %s) cannot be loaded after login."):format((...)))
-elseif __chomp_internal and __chomp_internal.VERSION > VERSION then
+elseif __chomp_internal and (__chomp_internal.VERSION or 0) > VERSION then
 	return
 elseif not __chomp_internal then
 	__chomp_internal = CreateFrame("Frame")

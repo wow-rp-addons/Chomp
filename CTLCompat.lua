@@ -25,7 +25,7 @@ if IsLoggedIn() then
 	error(("Chomp Message Library (embedded: %s) cannot be loaded after login."):format((...)))
 elseif not __chomp_internal then
 	error(("Chomp Message Library (embedded: %s) internals not present, cannot continue loading ChatThrottleLib compatibility layer."):format((...)))
-elseif __chomp_internal.VERSION > VERSION then
+elseif (__chomp_internal.VERSION or 0) > VERSION then
 	return
 end
 
