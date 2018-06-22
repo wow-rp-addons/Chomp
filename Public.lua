@@ -110,15 +110,15 @@ local function SplitAndSend(isEncoded, sendFunc, maxSize, prefix, text, ...)
 	local position = 1
 	while position <= textLen do
 		local offset = 0
-		local lastByte, secondLastByte
-		if isEncoded then
-			lastByte = text:byte(position + maxSize - 1)
-			secondLastByte = text:byte(position + maxSize - 2)
+		if isEncoded and textLen > position + maxSize then
+			local b3, b2, b1 = text:byte(position + maxSize - 3, position + maxSize - 1)
 			-- 61 is numeric code for "="
-			if lastByte == 61 then
+			if b1 == 61 or (b1 >= 194 and b1 <= 244) then
 				offset = 1
-			elseif secondLastByte == 61 then
+			elseif b2 == 61 or (b2 >= 224 and b2 <= 244) then
 				offset = 2
+			elseif b3 >= 240 and b3 <= 244 then
+				offset = 3
 			end
 		end
 		local outPrefix = prefix
@@ -151,6 +151,18 @@ end
 
 local function ToBattleNet(prefix, text, bnetIDGameAccount, priority)
 	return SplitAndSend(false, BNSendGameDataRearrange, 4078, prefix, text, bnetIDGameAccount, priority, queue)
+end
+
+local function CharToQuotedPrintable(c)
+	return ("=%02X"):format(c:byte())
+end
+
+local function StringToQuotedPrintable(s)
+	return (s:gsub(".", CharToQuotedPrintable))
+end
+
+local function TooManyContinuations(s1, s2)
+	return s1 .. (s2:gsub(".", CharToQuotedPrintable))
 end
 
 --[[
@@ -488,10 +500,46 @@ function AddOn_Chomp.EncodeQuotedPrintable(text)
 	if type(text) ~= "string" then
 		error("AddOn_Chomp.EncodeQuotedPrintable(): text: expected string, got " .. type(text), 2)
 	end
-	local encodedText = text:gsub("([%c\128-\255=])", function(c)
-		return ("=%02X"):format(string.byte(c))
+
+	-- First, the quoted-printable escape character.
+	text = text:gsub("=", CharToQuotedPrintable)
+
+	-- ASCII control characters. \009 and \127 are allowed for some reason.
+	text = text:gsub("[%z\001-\008\010-\031]", CharToQuotedPrintable)
+
+	-- Bytes not used in UTF-8 ever.
+	text = text:gsub("[\192\193\245-\255]", CharToQuotedPrintable)
+
+	--- Unicode 11.0.0, Table 3-7 malformed UTF-8 byte sequences.
+	text = text:gsub("\224[\128-\159][\128-\191]", StringToQuotedPrintable)
+	text = text:gsub("\240[\128-\143][\128-\191][\128-\191]", StringToQuotedPrintable)
+	text = text:gsub("\244[\143-\191][\128-\191][\128-\191]", StringToQuotedPrintable)
+
+	-- 2-4-byte leading bytes without enough continuation bytes.
+	text = text:gsub("[\194-\244]%f[^\128-\191]", CharToQuotedPrintable)
+	-- 3-4-byte leading bytes without enough continuation bytes.
+	text = text:gsub("[\224-\244][\128-\191]%f[^\128-\191]", StringToQuotedPrintable)
+	-- 4-byte leading bytes without enough continuation bytes.
+	text = text:gsub("[\240-\244][\128-\191][\128-\191]%f[^\128-\191]", StringToQuotedPrintable)
+
+	-- Continuation bytes without leading bytes.
+	text = text:gsub("%f[\128-\191\194-\244][\128-\191]+", function(s)
+		return (s:gsub(".", CharToQuotedPrintable))
 	end)
-	return encodedText
+
+	-- Multiple leading bytes.
+	text = text:gsub("[\194-\244]+[\194-\244]", function(s)
+		return (s:gsub(".", CharToQuotedPrintable, #s - 1))
+	end)
+
+	-- 2-byte character with too many continuation bytes
+	text = text:gsub("([\194-\223][\128-\191])([\128-\191]+)", TooManyContinuations)
+	-- 3-byte character with too many continuation bytes
+	text = text:gsub("([\224-\239][\128-\191][\128-\191])([\128-\191]+)", TooManyContinuations)
+	-- 4-byte character with too many continuation bytes
+	text = text:gsub("([\240-\244][\128-\191][\128-\191][\128-\191])([\128-\191]+)", TooManyContinuations)
+
+	return text
 end
 
 function AddOn_Chomp.DecodeQuotedPrintable(text)
