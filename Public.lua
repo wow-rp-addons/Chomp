@@ -29,7 +29,7 @@ end
 local Internal = __chomp_internal
 
 --[[
-	8.0 BACKWARDS COMPATIBILITY
+	START: 8.0 BACKWARDS COMPATIBILITY
 ]]
 
 local C_ChatInfo = _G.C_ChatInfo
@@ -59,38 +59,10 @@ if select(4, GetBuildInfo()) < 80000 then
 end
 
 --[[
-	CONSTANTS
+	END: 8.0 BACKWARDS COMPATIBILITY
 ]]
 
 local PRIORITIES_HASH = { HIGH = true, MEDIUM = true, LOW = true }
-
---[[
-	HELPER FUNCTIONS
-]]
-
-local NameWithRealm = Internal.NameWithRealm
-
-local function BNGetIDGameAccount(name)
-	-- The second conditional checks for appearing offline. This has to run
-	-- after PLAYER_LOGIN, hence Chomp queuing outgoing messages until then.
-	if not BNConnected() or not BNGetGameAccountInfoByGUID(UnitGUID("player")) then
-		return nil
-	end
-	name = NameWithRealm(name)
-	for i = 1, select(2, BNGetNumFriends()) do
-		for j = 1, BNGetNumFriendGameAccounts(i) do
-			local active, characterName, client, realmName, realmID, faction, race, class, blank, zoneName, level, gameText, broadcastText, broadcastTime, isConnected, bnetIDGameAccount = BNGetFriendGameAccountInfo(i, j)
-			if isConnected and client == BNET_CLIENT_WOW then
-				if not realmName or realmName == "" then
-					return nil
-				elseif name == NameWithRealm(characterName, realmName) then
-					return bnetIDGameAccount
-				end
-			end
-		end
-	end
-	return nil
-end
 
 local function QueueMessageOut(func, ...)
 	if not Internal.OutgoingQueue then
@@ -99,75 +71,6 @@ local function QueueMessageOut(func, ...)
 	local q = Internal.OutgoingQueue
 	q[#q + 1] = { ..., f = func, n = select("#", ...) }
 end
-
-local function SplitAndSend(isEncoded, sendFunc, maxSize, prefix, text, ...)
-	local prefixType = type(prefix)
-	local textLen = #text
-	if textLen <= maxSize then
-		local outPrefix = prefixType == "table" and prefix[0] or prefix
-		return sendFunc(outPrefix, text, ...)
-	end
-	local position = 1
-	while position <= textLen do
-		local offset = 0
-		if isEncoded and textLen > position + maxSize then
-			local b3, b2, b1 = text:byte(position + maxSize - 3, position + maxSize - 1)
-			-- 61 is numeric code for "="
-			if b1 == 61 or (b1 >= 194 and b1 <= 244) then
-				offset = 1
-			elseif b2 == 61 or (b2 >= 224 and b2 <= 244) then
-				offset = 2
-			elseif b3 >= 240 and b3 <= 244 then
-				offset = 3
-			end
-		end
-		local outPrefix = prefix
-		if prefixType == "table" then
-			if position == 1 then
-				outPrefix = prefix[1]
-			elseif position + maxSize - offset > textLen then
-				outPrefix = prefix[3]
-			else
-				outPrefix = prefix[2]
-			end
-		end
-		sendFunc(outPrefix, text:sub(position, position + maxSize - offset - 1), ...)
-		position = position + maxSize - offset
-	end
-end
-
--- TODO: add pre-send manipulation functions.
-local function ToInGame(prefix, text, target, priority, queue)
-	return SplitAndSend(false, AddOn_Chomp.SendAddonMessage, 255, prefix, text, "WHISPER", target, priority, queue)
-end
-
-local function ToInGameLogged(prefix, text, target, priority, queue)
-	return SplitAndSend(true, AddOn_Chomp.SendAddonMessageLogged, 255, prefix, AddOn_Chomp.EncodeQuotedPrintable(text), "WHISPER", target, priority, queue)
-end
-
-local function BNSendGameDataRearrange(prefix, text, bnetIDGameAccount, ...)
-	return AddOn_Chomp.BNSendGameData(bnetIDGameAccount, prefix, text, ...)
-end
-
-local function ToBattleNet(prefix, text, bnetIDGameAccount, priority)
-	return SplitAndSend(false, BNSendGameDataRearrange, 4078, prefix, text, bnetIDGameAccount, priority, queue)
-end
-
-local function CharToQuotedPrintable(c)
-	return ("=%02X"):format(c:byte())
-end
-
-local function StringToQuotedPrintable(s)
-	return (s:gsub(".", CharToQuotedPrintable))
-end
-
-local function TooManyContinuations(s1, s2)
-	return s1 .. (s2:gsub(".", CharToQuotedPrintable))
-end
-
---[[
-	API FUNCTIONS
-]]
 
 function AddOn_Chomp.SendAddonMessage(prefix, text, kind, target, priority, queue, callback, callbackArg)
 	if type(prefix) ~= "string" then
@@ -496,6 +399,18 @@ function AddOn_Chomp.BNSendWhisper(bnetIDAccount, text, priority, queue, callbac
 	return BattleNet:Enqueue(priority or DEFAULT_PRIORITY, queue or tostring(bnetIDAccount), message)
 end
 
+local function CharToQuotedPrintable(c)
+	return ("=%02X"):format(c:byte())
+end
+
+local function StringToQuotedPrintable(s)
+	return (s:gsub(".", CharToQuotedPrintable))
+end
+
+local function TooManyContinuations(s1, s2)
+	return s1 .. (s2:gsub(".", CharToQuotedPrintable))
+end
+
 function AddOn_Chomp.EncodeQuotedPrintable(text)
 	if type(text) ~= "string" then
 		error("AddOn_Chomp.EncodeQuotedPrintable(): text: expected string, got " .. type(text), 2)
@@ -589,6 +504,83 @@ function AddOn_Chomp.RegisterAddonPrefix(prefix, callback)
 	end
 	Internal.PrefixMap[prefix] = prefixData
 	prefixData.Callbacks[#prefixData.Callbacks + 1] = callback
+end
+
+local NameWithRealm = Internal.NameWithRealm
+
+local function BNGetIDGameAccount(name)
+	-- The second conditional checks for appearing offline. This has to run
+	-- after PLAYER_LOGIN, hence Chomp queuing outgoing messages until then.
+	if not BNConnected() or not BNGetGameAccountInfoByGUID(UnitGUID("player")) then
+		return nil
+	end
+	name = NameWithRealm(name)
+	for i = 1, select(2, BNGetNumFriends()) do
+		for j = 1, BNGetNumFriendGameAccounts(i) do
+			local active, characterName, client, realmName, realmID, faction, race, class, blank, zoneName, level, gameText, broadcastText, broadcastTime, isConnected, bnetIDGameAccount = BNGetFriendGameAccountInfo(i, j)
+			if isConnected and client == BNET_CLIENT_WOW then
+				if not realmName or realmName == "" then
+					return nil
+				elseif name == NameWithRealm(characterName, realmName) then
+					return bnetIDGameAccount
+				end
+			end
+		end
+	end
+	return nil
+end
+
+local function SplitAndSend(isEncoded, sendFunc, maxSize, prefix, text, ...)
+	local prefixType = type(prefix)
+	local textLen = #text
+	if textLen <= maxSize then
+		local outPrefix = prefixType == "table" and prefix[0] or prefix
+		return sendFunc(outPrefix, text, ...)
+	end
+	local position = 1
+	while position <= textLen do
+		local offset = 0
+		if isEncoded and textLen > position + maxSize then
+			local b3, b2, b1 = text:byte(position + maxSize - 3, position + maxSize - 1)
+			-- 61 is numeric code for "="
+			if b1 == 61 or (b1 >= 194 and b1 <= 244) then
+				offset = 1
+			elseif b2 == 61 or (b2 >= 224 and b2 <= 244) then
+				offset = 2
+			elseif b3 >= 240 and b3 <= 244 then
+				offset = 3
+			end
+		end
+		local outPrefix = prefix
+		if prefixType == "table" then
+			if position == 1 then
+				outPrefix = prefix[1]
+			elseif position + maxSize - offset > textLen then
+				outPrefix = prefix[3]
+			else
+				outPrefix = prefix[2]
+			end
+		end
+		sendFunc(outPrefix, text:sub(position, position + maxSize - offset - 1), ...)
+		position = position + maxSize - offset
+	end
+end
+
+-- TODO: add pre-send manipulation functions.
+local function ToInGame(prefix, text, target, priority, queue)
+	return SplitAndSend(false, AddOn_Chomp.SendAddonMessage, 255, prefix, text, "WHISPER", target, priority, queue)
+end
+
+local function ToInGameLogged(prefix, text, target, priority, queue)
+	return SplitAndSend(true, AddOn_Chomp.SendAddonMessageLogged, 255, prefix, AddOn_Chomp.EncodeQuotedPrintable(text), "WHISPER", target, priority, queue)
+end
+
+local function BNSendGameDataRearrange(prefix, text, bnetIDGameAccount, ...)
+	return AddOn_Chomp.BNSendGameData(bnetIDGameAccount, prefix, text, ...)
+end
+
+local function ToBattleNet(prefix, text, bnetIDGameAccount, priority)
+	return SplitAndSend(false, BNSendGameDataRearrange, 4078, prefix, text, bnetIDGameAccount, priority, queue)
 end
 
 function AddOn_Chomp.SmartAddonWhisper(prefix, text, target, priority, queue)
