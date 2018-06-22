@@ -523,9 +523,7 @@ function AddOn_Chomp.EncodeQuotedPrintable(text)
 	text = text:gsub("[\240-\244][\128-\191][\128-\191]%f[^\128-\191]", StringToQuotedPrintable)
 
 	-- Continuation bytes without leading bytes.
-	text = text:gsub("%f[\128-\191\194-\244][\128-\191]+", function(s)
-		return (s:gsub(".", CharToQuotedPrintable))
-	end)
+	text = text:gsub("%f[\128-\191\194-\244][\128-\191]+", StringToQuotedPrintable)
 
 	-- Multiple leading bytes.
 	text = text:gsub("[\194-\244]+[\194-\244]", function(s)
