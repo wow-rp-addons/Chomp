@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<Script file="Internal.lua"/>
+	<Script file="Public.lua"/>
+	<Script file="CTLCompat.lua"/>
+	<Script file="APIDocumentation.lua"/>
+</Ui>
