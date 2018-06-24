@@ -399,6 +399,10 @@ function AddOn_Chomp.BNSendWhisper(bnetIDAccount, text, priority, queue, callbac
 	return BattleNet:Enqueue(priority or DEFAULT_PRIORITY, queue or tostring(bnetIDAccount), message)
 end
 
+function AddOn_Chomp.IsSending()
+	return Internal.isSending
+end
+
 local function CharToQuotedPrintable(c)
 	return ("=%02X"):format(c:byte())
 end
