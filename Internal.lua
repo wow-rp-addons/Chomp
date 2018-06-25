@@ -206,7 +206,7 @@ local function ParseInGameMessageLogged(prefix, text, kind, sender)
 	if Internal.Prefixes[prefix] then
 		Internal.Prefixes[prefix].Logged[name] = true
 	end
-	return prefix, AddOn_Chomp.DecodeQuotedPrintable(text), kind, name
+	return prefix, AddOn_Chomp.DecodeQuotedPrintable(text), ("%s:LOGGED"):format(kind), name
 end
 
 local function ParseBattleNetMessage(prefix, text, kind, bnetIDGameAccount)
@@ -215,7 +215,7 @@ local function ParseBattleNetMessage(prefix, text, kind, bnetIDGameAccount)
 	if Internal.Prefixes[prefix] then
 		Internal.Prefixes[prefix].BattleNet[name] = true
 	end
-	return prefix, text, kind, name
+	return prefix, text, ("%s:BATTLENET"):format(kind), name, true
 end
 
 --[[
