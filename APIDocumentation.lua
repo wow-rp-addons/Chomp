@@ -128,7 +128,7 @@ local ChompAPI =
 			Arguments =
 			{
 				{ Name = "prefix", Type = "string or table", Nilable = false, Documentation = { "If table is passed, reference must be identical to table originally passed to AddOn_Chomp.RegisterAddonPrefix().", "Maximum length of 16 bytes." } },
-				{ Name = "text", Type = "string", Nilable = false, Documentation = { "The outgoing text will be split (based on selected method's maximum message size, encoded (based on selected method's permitted byte seuences), and otherwise transformed as necessary prior to sending." } },
+				{ Name = "text", Type = "string", Nilable = false, Documentation = { "The outgoing text will be split (based on selected method's maximum message size, encoded (based on selected method's permitted byte sequences), and otherwise transformed as necessary prior to sending." } },
 				{ Name = "target", Type = "string", Nilable = false },
 				{ Name = "priority", Type = "string", Nilable = true, Documentation = { "Must be one of \"HIGH\", \"MEDIUM\", or \"LOW\"." } },
 				{ Name = "queue", Type = "string", Nilable = true },
@@ -209,10 +209,10 @@ local ChompAPI =
 	Events = 
 	{
 	},
+	-- TODO: Prefix table?
 	Tables = 
 	{
 	},
-	-- TODO: Prefix table?
 }
 
-Internal.ChompAPIDoc = ChompAPI
+Internal.ChompAPI = ChompAPI
