@@ -697,17 +697,17 @@ function AddOn_Chomp.CheckReportGUID(prefix, guid)
 	end
 	local success, class, classID, race, raceID, gender, name, realm = pcall(GetPlayerInfoByGUID, guid)
 	if not success then
-		return false, "UnknownGUID"
+		return false, "UNKNOWN"
 	end
 	local target = NameWithRealm(name, realm)
 	if prefixData.BattleNet[target] then
-		return false, "BattleNet"
+		return false, "BATTLENET"
 	elseif prefixData.Logged[target] then
 		ReportLocation:SetGUID(guid)
 		local isReportable = C_ChatInfo.CanReportPlayer(ReportLocation)
-		return isReportable, "Logged"
+		return isReportable, "LOGGED"
 	end
-	return false, "Unlogged"
+	return false, "UNLOGGED"
 end
 
 function AddOn_Chomp.ReportGUID(prefix, guid)
@@ -727,7 +727,7 @@ function AddOn_Chomp.ReportGUID(prefix, guid)
 	local canReport, reason = AddOn_Chomp.CheckReportGUID(prefix, guid)
 	if canReport then
 		C_ChatInfo.ReportPlayer(PLAYER_REPORT_TYPE_LANGUAGE, ReportLocation, "Objectionable content in logged addon messages.")
-		return true, "Logged"
+		return true, reason
 	end
 	return false, reason
 end
