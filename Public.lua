@@ -610,7 +610,7 @@ local function SplitAndSend(needEncode, needBuffer, sendFunc, maxSize, prefix, t
 				totalMsg = math.ceil((textLen + totalOffset) / maxSize)
 			end
 			msgID = msgID + 1
-			msgText = ("%04X%04X%04X%s"):format(sessionID, msgID, totalMsg, msgText)
+			msgText = ("%03X%03X%03X%s"):format(sessionID, msgID, totalMsg, msgText)
 		end
 		sendFunc(outPrefix, msgText, ...)
 		position = position + maxSize - offset

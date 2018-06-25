@@ -150,7 +150,7 @@ local function HandleMessageIn(prefix, text, channel, sender)
 	local method = channel:match("%:(%u+)$")
 	local prefixData = Internal.Prefixes[prefix]
 	if prefixData.needBuffer or method == "BATTLENET" then
-		local sessionID, msgID, msgTotal, userText = text:match("^(%x%x%x%x)(%x%x%x%x)(%x%x%x%x)(.*)$")
+		local sessionID, msgID, msgTotal, userText = text:match("^(%x%x%x)(%x%x%x)(%x%x%x)(.*)$")
 		sessionID = tonumber(sessionID, 16) or -1
 		msgID = tonumber(msgID, 16) or 1
 		msgTotal = tonumber(msgTotal, 16) or 1
@@ -161,13 +161,10 @@ local function HandleMessageIn(prefix, text, channel, sender)
 			if not prefixData[sender] then
 				prefixData[sender] = {}
 			end
-			if not prefixData[sender][channel] then
-				prefixData[sender][channel] = {}
+			if not prefixData[sender][sessionID] then
+				prefixData[sender][sessionID] = {}
 			end
-			if not prefixData[sender][channel][sessionID] then
-				prefixData[sender][channel][sessionID] = {}
-			end
-			local buffer = prefixData[sender][channel][sessionID]
+			local buffer = prefixData[sender][sessionID]
 			buffer[msgID] = text
 			local callbacks = prefixData.Callbacks
 			local runHandler = true
@@ -182,20 +179,22 @@ local function HandleMessageIn(prefix, text, channel, sender)
 					runHandler = false
 				elseif runHandler and buffer[i] and (not prefixData.fullMsgOnly or i == msgTotal) then
 					-- This message is ready for processing.
-					local handlerText
 					if prefixData.fullMsgOnly then
 						handlerText = table.concat(buffer)
+						for j, func in ipairs(prefixData.Callbacks) do
+							xpcall(func, geterrorhandler(), prefix, table.concat(buffer), channel, sender)
+						end
 					else
-						handlerText = buffer[i]
-					end
-					for j, func in ipairs(prefixData.Callbacks) do
-						xpcall(func, geterrorhandler(), prefix, handlerText, channel, sender)
+						for j, func in ipairs(prefixData.Callbacks) do
+							-- Nils are reserved for Blizzard arguments.
+							xpcall(func, geterrorhandler(), prefix, buffer[i], channel, sender, nil, nil, nil, nil, nil, nil, nil, nil, sessionID, msgID, msgTotal)
+						end
 					end
 					buffer[i] = false
 					if i == msgTotal then
 						-- Tidy up the garbage when we've processed the last
 						-- pending message.
-						prefixData[sender][channel][sessionID] = nil
+						prefixData[sender][sessionID] = nil
 					end
 				end
 			end
