@@ -34,6 +34,7 @@ local Internal = __chomp_internal
 
 local C_ChatInfo = _G.C_ChatInfo
 local xpcall = _G.xpcall
+local PlayerLocationMixin = _G.PlayerLocationMixin
 if select(4, GetBuildInfo()) < 80000 then
 
 	C_ChatInfo = {
@@ -43,6 +44,7 @@ if select(4, GetBuildInfo()) < 80000 then
 		SendAddonMessage = _G.SendAddonMessage,
 		RegisterAddonMessagePrefix = _G.RegisterAddonMessagePrefix,
 		IsAddonMessagePrefixRegistered = _G.IsAddonMessagePrefixRegistered,
+		CanReportPlayer = function() return false end,
 	}
 
 	-- This is ugly and has too much overhead, but won't see much public use.
@@ -55,6 +57,10 @@ if select(4, GetBuildInfo()) < 80000 then
 			func(unpack(args, 1, n))
 		end, errHandler)
 	end
+
+	PlayerLocationMixin = {
+		SetGUID = function() end,
+	}
 
 end
 
@@ -655,32 +661,40 @@ function AddOn_Chomp.SmartAddonWhisper(prefix, text, target, priority, queue)
 	return sentBnet, sentLogged, sentInGame
 end
 
-function AddOn_Chomp.CheckReport(prefix, target)
+local ReportLocation = CreateFromMixins(PlayerLocationMixin)
+
+function AddOn_Chomp.CheckReportGUID(prefix, guid)
 	local prefixType = type(prefix)
 	local prefixData = Internal.PrefixMap[prefix]
 	if prefixType ~= "string" and prefixType ~= "table" then
 		error("AddOn_Chomp.ReportTarget(): prefix: expected string or table, got " .. prefixType, 2)
-	elseif type(target) ~= "string" then
-		error("AddOn_Chomp.ReportTarget(): target: expected string, got " .. type(target), 2)
+	elseif type(guid) ~= "string" then
+		error("AddOn_Chomp.ReportTarget(): guid: expected string, got " .. type(guid), 2)
 	elseif not prefixData then
 		error("AddOn_Chomp.ReportTarget(): prefix: prefix has not been registered with Chomp", 2)
 	end
+	local success, class, classID, race, raceID, gender, name, realm = pcall(GetPlayerInfoByGUID, guid)
+	if not success then
+		return false, "UnknownGUID"
+	end
+	local target = NameWithRealm(name, realm)
 	if prefixData.BattleNet[target] then
 		return false, "BattleNet"
 	elseif prefixData.Logged[target] then
-		-- TODO: Check reportability from Blizzard.
-		return true, "Logged"
+		ReportLocation:SetGUID(guid)
+		local isReportable = C_ChatInfo.CanReportPlayer(ReportLocation)
+		return isReportable, "Logged"
 	end
-	return false, "InGame"
+	return false, "Unlogged"
 end
 
-function AddOn_Chomp.ReportTarget(prefix, target)
+function AddOn_Chomp.ReportGUID(prefix, guid)
 	local prefixType = type(prefix)
 	local prefixData = Internal.PrefixMap[prefix]
 	if prefixType ~= "string" and prefixType ~= "table" then
 		error("AddOn_Chomp.ReportTarget(): prefix: expected string or table, got " .. prefixType, 2)
-	elseif type(target) ~= "string" then
-		error("AddOn_Chomp.ReportTarget(): target: expected string, got " .. type(target), 2)
+	elseif type(guid) ~= "string" then
+		error("AddOn_Chomp.ReportTarget(): guid: expected string, got " .. type(guid), 2)
 	elseif not prefixData then
 		error("AddOn_Chomp.ReportTarget(): prefix: prefix has not been registered with Chomp", 2)
 	elseif prefixData.BattleNet[target] then
@@ -688,7 +702,12 @@ function AddOn_Chomp.ReportTarget(prefix, target)
 	elseif not prefixData.Logged[target] then
 		error("AddOn_Chomp.ReportTarget(): target uses unlogged messages and cannot be reported", 2)
 	end
-	-- TODO: Report here.
+	local canReport, reason = AddOn_Chomp.CheckReportGUID(prefix, guid)
+	if canReport then
+		C_ChatInfo.ReportPlayer(PLAYER_REPORT_TYPE_LANGUAGE, ReportLocation, "Objectionable content in logged addon messages.")
+		return true, "Logged"
+	end
+	return false, reason
 end
 
 function AddOn_Chomp.RegisterErrorCallback(callback)
