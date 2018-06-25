@@ -27,7 +27,7 @@ end
 local Internal = __chomp_internal
 
 --[[
-	8.0 BACKWARDS COMPATIBILITY
+	START: 8.0 BACKWARDS COMPATIBILITY
 ]]
 
 local C_ChatInfo = _G.C_ChatInfo
@@ -39,8 +39,6 @@ if select(4, GetBuildInfo()) < 80000 then
 		-- a no-op.
 		SendAddonMessageLogged = function() end,
 		SendAddonMessage = _G.SendAddonMessage,
-		RegisterAddonMessagePrefix = _G.RegisterAddonMessagePrefix,
-		IsAddonMessagePrefixRegistered = _G.IsAddonMessagePrefixRegistered,
 	}
 
 	-- This is ugly and has too much overhead, but won't see much public use.
@@ -55,6 +53,10 @@ if select(4, GetBuildInfo()) < 80000 then
 	end
 
 end
+
+--[[
+	END: 8.0 BACKWARDS COMPATIBILITY
+]]
 
 --[[
 	CONSTANTS
