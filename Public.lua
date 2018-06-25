@@ -62,6 +62,7 @@ end
 	END: 8.0 BACKWARDS COMPATIBILITY
 ]]
 
+local DEFAULT_PRIORITY = "MEDIUM"
 local PRIORITIES_HASH = { HIGH = true, MEDIUM = true, LOW = true }
 
 local function QueueMessageOut(func, ...)
@@ -303,8 +304,8 @@ function AddOn_Chomp.BNSendGameData(bnetIDGameAccount, prefix, text, priority, q
 		error("AddOn_Chomp.BNSendGameData(): prefix: expected string, got " .. type(text), 2)
 	elseif type(text) ~= "string" then
 		error("AddOn_Chomp.BNSendGameData(): text: expected string, got " .. type(text), 2)
-	elseif type(bnetIDAccount) ~= "string" then
-		error("AddOn_Chomp.BNSendGameData(): bnetIDAccount: expected number, got " .. type(bnetIDAccount), 2)
+	elseif type(bnetIDGameAccount) ~= "number" then
+		error("AddOn_Chomp.BNSendGameData(): bnetIDGameAccount: expected number, got " .. type(bnetIDGameAccount), 2)
 	elseif priority and not PRIORITIES_HASH[priority] then
 		error("AddOn_Chomp.BNSendGameData(): priority: expected \"HIGH\", \"MEDIUM\", \"LOW\", or nil, got " .. tostring(priority), 2)
 	elseif queue and type(queue) ~= "string" then
@@ -519,6 +520,9 @@ local function BNGetIDGameAccount(name)
 		return nil
 	end
 	name = NameWithRealm(name)
+	if name == NameWithRealm(UnitFullName("player")) then
+		return (select(16, BNGetGameAccountInfoByGUID(UnitGUID("player"))))
+	end
 	for i = 1, select(2, BNGetNumFriends()) do
 		for j = 1, BNGetNumFriendGameAccounts(i) do
 			local active, characterName, client, realmName, realmID, faction, race, class, blank, zoneName, level, gameText, broadcastText, broadcastTime, isConnected, bnetIDGameAccount = BNGetFriendGameAccountInfo(i, j)
@@ -534,17 +538,28 @@ local function BNGetIDGameAccount(name)
 	return nil
 end
 
-local function SplitAndSend(isEncoded, sendFunc, maxSize, prefix, text, ...)
+local nextSessionID = math.random(0, 4095)
+
+local function SplitAndSend(needsEncoding, needsBuffering, sendFunc, maxSize, prefix, text, ...)
 	local prefixType = type(prefix)
+	if needsEncoding then
+		text = AddOn_Chomp.EncodeQuotedPrintable(text)
+	end
 	local textLen = #text
-	if textLen <= maxSize then
-		local outPrefix = prefixType == "table" and prefix[0] or prefix
-		return sendFunc(outPrefix, text, ...)
+	if needsBuffering then
+		maxSize = maxSize - 12
+	end
+	local sessionID, msgID, totalMsg
+	if needsBuffering then
+		msgID = 0
+		totalMsg = math.ceil(textLen / maxSize)
+		sessionID = nextSessionID
+		nextSessionID = (nextSessionID + 1) % 4096
 	end
 	local position = 1
 	while position <= textLen do
 		local offset = 0
-		if isEncoded and textLen > position + maxSize then
+		if needsEncoding and textLen > position + maxSize then
 			local b3, b2, b1 = text:byte(position + maxSize - 3, position + maxSize - 1)
 			-- 61 is numeric code for "="
 			if b1 == 61 or (b1 >= 194 and b1 <= 244) then
@@ -557,7 +572,9 @@ local function SplitAndSend(isEncoded, sendFunc, maxSize, prefix, text, ...)
 		end
 		local outPrefix = prefix
 		if prefixType == "table" then
-			if position == 1 then
+			if textLen <= maxSize then
+				outPrefix = prefix[0]
+			elseif position == 1 then
 				outPrefix = prefix[1]
 			elseif position + maxSize - offset > textLen then
 				outPrefix = prefix[3]
@@ -565,18 +582,23 @@ local function SplitAndSend(isEncoded, sendFunc, maxSize, prefix, text, ...)
 				outPrefix = prefix[2]
 			end
 		end
-		sendFunc(outPrefix, text:sub(position, position + maxSize - offset - 1), ...)
+		local msgText = text:sub(position, position + maxSize - offset - 1)
+		if needsBuffering then
+			msgID = msgID + 1
+			msgText = ("%04X%04X%04X%s"):format(sessionID, msgID, totalMsg, msgText)
+		end
+		sendFunc(outPrefix, msgText, ...)
 		position = position + maxSize - offset
 	end
 end
 
 -- TODO: add pre-send manipulation functions.
 local function ToInGame(prefix, text, target, priority, queue)
-	return SplitAndSend(false, AddOn_Chomp.SendAddonMessage, 255, prefix, text, "WHISPER", target, priority, queue)
+	return SplitAndSend(false, false, AddOn_Chomp.SendAddonMessage, 255, prefix, text, "WHISPER", target, priority, queue)
 end
 
 local function ToInGameLogged(prefix, text, target, priority, queue)
-	return SplitAndSend(true, AddOn_Chomp.SendAddonMessageLogged, 255, prefix, AddOn_Chomp.EncodeQuotedPrintable(text), "WHISPER", target, priority, queue)
+	return SplitAndSend(true, false, AddOn_Chomp.SendAddonMessageLogged, 255, prefix, text, "WHISPER", target, priority, queue)
 end
 
 local function BNSendGameDataRearrange(prefix, text, bnetIDGameAccount, ...)
@@ -584,7 +606,7 @@ local function BNSendGameDataRearrange(prefix, text, bnetIDGameAccount, ...)
 end
 
 local function ToBattleNet(prefix, text, bnetIDGameAccount, priority)
-	return SplitAndSend(false, BNSendGameDataRearrange, 4078, prefix, text, bnetIDGameAccount, priority, queue)
+	return SplitAndSend(false, true, BNSendGameDataRearrange, 4078, prefix, text, bnetIDGameAccount, priority, queue)
 end
 
 function AddOn_Chomp.SmartAddonWhisper(prefix, text, target, priority, queue)
@@ -618,14 +640,14 @@ function AddOn_Chomp.SmartAddonWhisper(prefix, text, target, priority, queue)
 		ToBattleNet(prefix, text, bnetIDGameAccount, priority, queue)
 		sentBnet = true
 		if bnetCapable == true then
-			return sentBnet, false, false
+			return sentBnet, sentLogged, sentInGame
 		end
 	end
 	if loggedCapable ~= false then
 		ToInGameLogged(prefix, text, target, priority, queue)
 		sentLogged = true
 		if loggedCapable == true then
-			return sentBnet, sentLogged, false
+			return sentBnet, sentLogged, sentInGame
 		end
 	end
 	ToInGame(prefix, text, target, priority, queue)

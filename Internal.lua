@@ -67,7 +67,6 @@ local BATTLENET_BURST, BATTLENET_BPS = 8196, 4098
 local POOL_TICK = 0.2
 
 local PRIORITIES = { "HIGH", "MEDIUM", "LOW" }
-local DEFAULT_PRIORITY = "MEDIUM"
 
 local PRIORITY_TO_CTL = { LOW = "BULK",  MEDIUM = "NORMAL", HIGH = "ALERT" }
 
@@ -133,13 +132,13 @@ local function NameWithRealm(name, realm)
 	return FULL_PLAYER_NAME:format(name, (realm:gsub("%s*%-*", "")))
 end
 
-local function HandleMessageIn(prefix, text, channel, sender)
+local function HandleMessageIn(prefix, text, channel, sender, needsBuffering)
 	if not IsLoggedIn() then
 		if not Internal.IncomingQueue then
 			Internal.IncomingQueue = {}
 		end
 		local q = Internal.IncomingQueue
-		q[#q + 1] = { prefix, text, channel, sender }
+		q[#q + 1] = { prefix, text, channel, sender, needsBuffering }
 		return
 	end
 
@@ -147,8 +146,53 @@ local function HandleMessageIn(prefix, text, channel, sender)
 		return
 	end
 
-	local callbacks = Internal.Prefixes[prefix].Callbacks
-	for i, func in ipairs(callbacks) do
+	local prefixData = Internal.Prefixes[prefix]
+	if needsBuffering then
+		local sessionID, msgID, msgTotal, userText = text:match("^(%x%x%x%x)(%x%x%x%x)(%x%x%x%x)(.*)$")
+		sessionID = tonumber(sessionID, 16) or -1
+		msgID = tonumber(msgID, 16) or 1
+		msgTotal = tonumber(msgTotal, 16) or 1
+		if userText then
+			text = userText
+		end
+		if msgTotal > 1 then
+			if not prefixData[sender] then
+				prefixData[sender] = {}
+			end
+			if not prefixData[sender][sessionID] then
+				prefixData[sender][sessionID] = {}
+				local buffer = prefixData[sender][sessionID]
+				for i = 1, msgTotal do
+					-- true means a message is expected to fill this sequence.
+					buffer[i] = true
+				end
+			end
+			local buffer = prefixData[sender][sessionID]
+			local callbacks = prefixData.Callbacks
+			buffer[msgID] = text
+			for i = 1, msgTotal do
+				if buffer[i] == true then
+					-- Need to hold this message until we're ready to process.
+					return
+				elseif buffer[i] then
+					-- This message is ready for processing.
+					for j, func in ipairs(prefixData.Callbacks) do
+						xpcall(func, geterrorhandler(), prefix, buffer[i], channel, sender)
+					end
+					buffer[i] = false
+					if i == msgTotal then
+						-- Tidy up the garbage when we've processed the last
+						-- pending message.
+						prefixData[sender][sessionID] = nil
+					end
+				end
+			end
+			-- If we have a multi-message sequence, end here.
+			return
+		end
+	end
+
+	for i, func in ipairs(prefixData.Callbacks) do
 		xpcall(func, geterrorhandler(), prefix, text, channel, sender)
 	end
 end
