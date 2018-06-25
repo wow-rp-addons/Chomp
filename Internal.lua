@@ -134,22 +134,22 @@ local function NameWithRealm(name, realm)
 	return FULL_PLAYER_NAME:format(name, (realm:gsub("%s*%-*", "")))
 end
 
-local function HandleMessageIn(prefix, text, channel, sender, needsBuffering)
+local function HandleMessageIn(prefix, text, channel, sender)
 	if not IsLoggedIn() then
 		if not Internal.IncomingQueue then
 			Internal.IncomingQueue = {}
 		end
 		local q = Internal.IncomingQueue
-		q[#q + 1] = { prefix, text, channel, sender, needsBuffering }
+		q[#q + 1] = { prefix, text, channel, sender }
 		return
 	end
 
 	if not Internal.Prefixes[prefix] then
 		return
 	end
-
+	local method = channel:match("%:(%u+)$")
 	local prefixData = Internal.Prefixes[prefix]
-	if needsBuffering then
+	if prefixData.needBuffer or method == "BATTLENET" then
 		local sessionID, msgID, msgTotal, userText = text:match("^(%x%x%x%x)(%x%x%x%x)(%x%x%x%x)(.*)$")
 		sessionID = tonumber(sessionID, 16) or -1
 		msgID = tonumber(msgID, 16) or 1
@@ -161,31 +161,41 @@ local function HandleMessageIn(prefix, text, channel, sender, needsBuffering)
 			if not prefixData[sender] then
 				prefixData[sender] = {}
 			end
-			if not prefixData[sender][sessionID] then
-				prefixData[sender][sessionID] = {}
-				local buffer = prefixData[sender][sessionID]
-				for i = 1, msgTotal do
-					-- true means a message is expected to fill this sequence.
-					buffer[i] = true
-				end
+			if not prefixData[sender][channel] then
+				prefixData[sender][channel] = {}
 			end
-			local buffer = prefixData[sender][sessionID]
-			local callbacks = prefixData.Callbacks
+			if not prefixData[sender][channel][sessionID] then
+				prefixData[sender][channel][sessionID] = {}
+			end
+			local buffer = prefixData[sender][channel][sessionID]
 			buffer[msgID] = text
+			local callbacks = prefixData.Callbacks
+			local runHandler = true
 			for i = 1, msgTotal do
-				if buffer[i] == true then
+				if buffer[i] == nil then
+					-- msgTotal has changed, either by virtue of being the first
+					-- message or by correction in other side's calculations.
+					buffer[i] = true
+					runHandler = false
+				elseif buffer[i] == true then
 					-- Need to hold this message until we're ready to process.
-					return
-				elseif buffer[i] then
+					runHandler = false
+				elseif runHandler and buffer[i] and (not prefixData.fullMsgOnly or i == msgTotal) then
 					-- This message is ready for processing.
+					local handlerText
+					if prefixData.fullMsgOnly then
+						handlerText = table.concat(buffer)
+					else
+						handlerText = buffer[i]
+					end
 					for j, func in ipairs(prefixData.Callbacks) do
-						xpcall(func, geterrorhandler(), prefix, buffer[i], channel, sender)
+						xpcall(func, geterrorhandler(), prefix, handlerText, channel, sender)
 					end
 					buffer[i] = false
 					if i == msgTotal then
 						-- Tidy up the garbage when we've processed the last
 						-- pending message.
-						prefixData[sender][sessionID] = nil
+						prefixData[sender][channel][sessionID] = nil
 					end
 				end
 			end
@@ -217,7 +227,7 @@ local function ParseBattleNetMessage(prefix, text, kind, bnetIDGameAccount)
 	if Internal.Prefixes[prefix] then
 		Internal.Prefixes[prefix].BattleNet[name] = true
 	end
-	return prefix, text, ("%s:BATTLENET"):format(kind), name, true
+	return prefix, text, ("%s:BATTLENET"):format(kind), name
 end
 
 --[[

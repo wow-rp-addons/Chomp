@@ -476,7 +476,26 @@ function AddOn_Chomp.DecodeQuotedPrintable(text)
 	return decodedText
 end
 
-function AddOn_Chomp.RegisterAddonPrefix(prefix, callback)
+function AddOn_Chomp.SafeSubString(text, first, last, textLen)
+	local offset = 0
+	if not textLen then
+		textLen = #text
+	end
+	if textLen > last then
+		local b3, b2, b1 = text:byte(last - 2, last)
+		-- 61 is numeric code for "="
+		if b1 == 61 or (b1 >= 194 and b1 <= 244) then
+			offset = 1
+		elseif b2 == 61 or (b2 >= 224 and b2 <= 244) then
+			offset = 2
+		elseif b3 >= 240 and b3 <= 244 then
+			offset = 3
+		end
+	end
+	return (text:sub(first, last - offset)), offset
+end
+
+function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, needBuffer, fullMsgOnly)
 	local prefixType = type(prefix)
 	if prefixType ~= "string" and prefixType ~= "table" then
 		error("AddOn_Chomp.RegisterAddonPrefix(): prefix: expected string or table, got " .. prefixType, 2)
@@ -488,6 +507,8 @@ function AddOn_Chomp.RegisterAddonPrefix(prefix, callback)
 		error("AddOn_Chomp.RegisterAddonPrefix(): prefix: length of indicies [0], [1], [2], and [3] cannot exceed 16 bytes each", 2)
 	elseif type(callback) ~= "function" then
 		error("AddOn_Chomp.RegisterAddonPrefix(): callback: expected function, got " .. type(callback), 2)
+	elseif fullMsgOnly and not needBuffer then
+		error("AddOn_Chomp.RegisterAddonPrefix(): needBuffer: fullMsgOnly requires needBuffer to be true", 2)
 	end
 	local prefixID = prefix
 	if prefixType == "table" then
@@ -499,6 +520,8 @@ function AddOn_Chomp.RegisterAddonPrefix(prefix, callback)
 			BattleNet = {},
 			Logged = {},
 			Callbacks = {},
+			needBuffer = needBuffer,
+			fullMsgOnly = fullMsgOnly,
 		}
 		Internal.Prefixes[prefixID] = prefixData
 		if not C_ChatInfo.IsAddonMessagePrefixRegistered(prefixID) then
@@ -546,17 +569,18 @@ end
 
 local nextSessionID = math.random(0, 4095)
 
-local function SplitAndSend(needsEncoding, needsBuffering, sendFunc, maxSize, prefix, text, ...)
+local function SplitAndSend(needEncode, needBuffer, sendFunc, maxSize, prefix, text, ...)
 	local prefixType = type(prefix)
-	if needsEncoding then
+	if needEncode then
 		text = AddOn_Chomp.EncodeQuotedPrintable(text)
 	end
 	local textLen = #text
-	if needsBuffering then
+	if needBuffer then
 		maxSize = maxSize - 12
 	end
 	local sessionID, msgID, totalMsg
-	if needsBuffering then
+	local totalOffset = 0
+	if needBuffer then
 		msgID = 0
 		totalMsg = math.ceil(textLen / maxSize)
 		sessionID = nextSessionID
@@ -564,18 +588,9 @@ local function SplitAndSend(needsEncoding, needsBuffering, sendFunc, maxSize, pr
 	end
 	local position = 1
 	while position <= textLen do
-		local offset = 0
-		if needsEncoding and textLen > position + maxSize then
-			local b3, b2, b1 = text:byte(position + maxSize - 3, position + maxSize - 1)
-			-- 61 is numeric code for "="
-			if b1 == 61 or (b1 >= 194 and b1 <= 244) then
-				offset = 1
-			elseif b2 == 61 or (b2 >= 224 and b2 <= 244) then
-				offset = 2
-			elseif b3 >= 240 and b3 <= 244 then
-				offset = 3
-			end
-		end
+		-- Only *need* to do a safe split for encoded channels, but doing so
+		-- always shouldn't hurt.
+		local msgText, offset = AddOn_Chomp.SafeSubString(text, position, position + maxSize - 1, textLen)
 		local outPrefix = prefix
 		if prefixType == "table" then
 			if textLen <= maxSize then
@@ -588,8 +603,12 @@ local function SplitAndSend(needsEncoding, needsBuffering, sendFunc, maxSize, pr
 				outPrefix = prefix[2]
 			end
 		end
-		local msgText = text:sub(position, position + maxSize - offset - 1)
-		if needsBuffering then
+		if needBuffer then
+			if offset > 0 then
+				-- Update total offset and total message number if needed.
+				totalOffset = totalOffset + offset
+				totalMsg = math.ceil((textLen + totalOffset) / maxSize)
+			end
 			msgID = msgID + 1
 			msgText = ("%04X%04X%04X%s"):format(sessionID, msgID, totalMsg, msgText)
 		end
@@ -600,11 +619,13 @@ end
 
 -- TODO: add pre-send manipulation functions.
 local function ToInGame(prefix, text, target, priority, queue)
-	return SplitAndSend(false, false, AddOn_Chomp.SendAddonMessage, 255, prefix, text, "WHISPER", target, priority, queue)
+	local prefixData = Internal.PrefixMap[prefix]
+	return SplitAndSend(false, prefixData.needBuffer, AddOn_Chomp.SendAddonMessage, 255, prefix, text, "WHISPER", target, priority, queue)
 end
 
 local function ToInGameLogged(prefix, text, target, priority, queue)
-	return SplitAndSend(true, false, AddOn_Chomp.SendAddonMessageLogged, 255, prefix, text, "WHISPER", target, priority, queue)
+	local prefixData = Internal.PrefixMap[prefix]
+	return SplitAndSend(true, prefixData.needBuffer, AddOn_Chomp.SendAddonMessageLogged, 255, prefix, text, "WHISPER", target, priority, queue)
 end
 
 local function BNSendGameDataRearrange(prefix, text, bnetIDGameAccount, ...)
@@ -612,6 +633,7 @@ local function BNSendGameDataRearrange(prefix, text, bnetIDGameAccount, ...)
 end
 
 local function ToBattleNet(prefix, text, bnetIDGameAccount, priority)
+	--local prefixData = Internal.PrefixMap[prefix]
 	return SplitAndSend(false, true, BNSendGameDataRearrange, 4078, prefix, text, bnetIDGameAccount, priority, queue)
 end
 
