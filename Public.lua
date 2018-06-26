@@ -633,14 +633,14 @@ local function SplitAndSend(needEncode, needBuffer, sendFunc, maxSize, prefix, t
 end
 
 -- TODO: add pre-send manipulation functions.
-local function ToInGame(prefix, text, target, priority, queue)
+local function ToInGame(prefix, text, kind, target, priority, queue)
 	local prefixData = Internal.PrefixMap[prefix]
-	return SplitAndSend(false, prefixData.needBuffer, AddOn_Chomp.SendAddonMessage, 255, prefix, text, "WHISPER", target, priority, queue)
+	return SplitAndSend(false, prefixData.needBuffer, AddOn_Chomp.SendAddonMessage, 255, prefix, text, kind, target, priority, queue)
 end
 
-local function ToInGameLogged(prefix, text, target, priority, queue)
+local function ToInGameLogged(prefix, text, kind, target, priority, queue)
 	local prefixData = Internal.PrefixMap[prefix]
-	return SplitAndSend(true, prefixData.needBuffer, AddOn_Chomp.SendAddonMessageLogged, 255, prefix, text, "WHISPER", target, priority, queue)
+	return SplitAndSend(true, prefixData.needBuffer, AddOn_Chomp.SendAddonMessageLogged, 255, prefix, text, kind, target, priority, queue)
 end
 
 local function BNSendGameDataRearrange(prefix, text, bnetIDGameAccount, ...)
@@ -652,25 +652,27 @@ local function ToBattleNet(prefix, text, bnetIDGameAccount, priority)
 	return SplitAndSend(false, true, BNSendGameDataRearrange, 4078, prefix, text, bnetIDGameAccount, priority, queue)
 end
 
-function AddOn_Chomp.SmartAddonWhisper(prefix, text, target, priority, queue)
+function AddOn_Chomp.SmartAddonMessage(prefix, text, kind, target, priority, queue)
 	local prefixType = type(prefix)
 	local prefixData = Internal.PrefixMap[prefix]
 	if prefixType ~= "string" and prefixType ~= "table" then
-		error("AddOn_Chomp.SmartAddonWhisper(): prefix: expected string or table, got " .. prefixType, 2)
+		error("AddOn_Chomp.SmartAddonMessage(): prefix: expected string or table, got " .. prefixType, 2)
 	elseif type(text) ~= "string" then
-		error("AddOn_Chomp.SmartAddonWhisper(): text: expected string, got " .. type(text), 2)
+		error("AddOn_Chomp.SmartAddonMessage(): text: expected string, got " .. type(text), 2)
+	elseif type(kind) ~= "string" then
+		error("AddOn_Chomp.SmartAddonMessage(): kind: expected string, got " .. type(kind), 2)
 	elseif type(target) ~= "string" then
-		error("AddOn_Chomp.SmartAddonWhisper(): target: expected string, got " .. type(target), 2)
+		error("AddOn_Chomp.SmartAddonMessage(): target: expected string, got " .. type(target), 2)
 	elseif priority and not PRIORITIES_HASH[priority] then
-		error("AddOn_Chomp.SmartAddonWhisper(): priority: expected \"HIGH\", \"MEDIUM\", or \"LOW\", got " .. tostring(priority), 2)
+		error("AddOn_Chomp.SmartAddonMessage(): priority: expected \"HIGH\", \"MEDIUM\", or \"LOW\", got " .. tostring(priority), 2)
 	elseif queue and type(queue) ~= "string" then
-		error("AddOn_Chomp.SmartAddonWhisper(): queue: expected string or nil, got " .. type(queue), 2)
+		error("AddOn_Chomp.SmartAddonMessage(): queue: expected string or nil, got " .. type(queue), 2)
 	elseif not prefixData then
-		error("AddOn_Chomp.SmartAddonWhisper(): prefix: prefix has not been registered with Chomp", 2)
+		error("AddOn_Chomp.SmartAddonMessage(): prefix: prefix has not been registered with Chomp", 2)
 	end
 
 	if not IsLoggedIn() then
-		QueueMessageOut("SmartAddonWhisper", prefix, text, target, priority, queue)
+		QueueMessageOut("SmartAddonMessage", prefix, text, kind, target, priority, queue)
 	end
 
 	target = NameWithRealm(target)
@@ -678,10 +680,10 @@ function AddOn_Chomp.SmartAddonWhisper(prefix, text, target, priority, queue)
 	local loggedCapable = prefixData.Logged[target]
 	local sentBnet, sentLogged, sentInGame = false, false, false
 
-	if prefixData.permitBattleNet then
+	if prefixData.permitBattleNet and kind == "WHISPER" then
 		local bnetIDGameAccount = BNGetIDGameAccount(target)
 		if bnetIDGameAccount and bnetCapable ~= false then
-			ToBattleNet(prefix, text, bnetIDGameAccount, priority, queue)
+			ToBattleNet(prefix, text, kind, bnetIDGameAccount, priority, queue)
 			sentBnet = true
 			if bnetCapable == true then
 				return sentBnet, sentLogged, sentInGame
@@ -690,7 +692,7 @@ function AddOn_Chomp.SmartAddonWhisper(prefix, text, target, priority, queue)
 	end
 	if prefixData.permitLogged then
 		if loggedCapable ~= false then
-			ToInGameLogged(prefix, text, target, priority, queue)
+			ToInGameLogged(prefix, text, kind, target, priority, queue)
 			sentLogged = true
 			if loggedCapable == true then
 				return sentBnet, sentLogged, sentInGame
@@ -698,7 +700,7 @@ function AddOn_Chomp.SmartAddonWhisper(prefix, text, target, priority, queue)
 		end
 	end
 	if prefixData.permitUnlogged then
-		ToInGame(prefix, text, target, priority, queue)
+		ToInGame(prefix, text, kind, target, priority, queue)
 		sentInGame = true
 		return sentBnet, sentLogged, sentInGame
 	end
