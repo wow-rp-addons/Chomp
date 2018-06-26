@@ -149,6 +149,10 @@ local function HandleMessageIn(prefix, text, channel, sender)
 	end
 	local method = channel:match("%:(%u+)$")
 	local prefixData = Internal.Prefixes[prefix]
+	if (not method and not prefixData.permitUnlogged)
+		or (method == "BATTLENET" and not prefixData.permitBattleNet)
+		or (method == "LOGGED" and not prefixData.permitLogged)
+	then return end
 	if prefixData.needBuffer or method == "BATTLENET" then
 		local sessionID, msgID, msgTotal, userText = text:match("^(%x%x%x)(%x%x%x)(%x%x%x)(.*)$")
 		sessionID = tonumber(sessionID, 16) or -1

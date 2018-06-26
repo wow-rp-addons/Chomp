@@ -495,7 +495,7 @@ function AddOn_Chomp.SafeSubString(text, first, last, textLen)
 	return (text:sub(first, last - offset)), offset
 end
 
-function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, needBuffer, fullMsgOnly)
+function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, settings)
 	local prefixType = type(prefix)
 	if prefixType ~= "string" and prefixType ~= "table" then
 		error("AddOn_Chomp.RegisterAddonPrefix(): prefix: expected string or table, got " .. prefixType, 2)
@@ -507,8 +507,18 @@ function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, needBuffer, fullMsgOn
 		error("AddOn_Chomp.RegisterAddonPrefix(): prefix: length of indicies [0], [1], [2], and [3] cannot exceed 16 bytes each", 2)
 	elseif type(callback) ~= "function" then
 		error("AddOn_Chomp.RegisterAddonPrefix(): callback: expected function, got " .. type(callback), 2)
-	elseif fullMsgOnly and not needBuffer then
-		error("AddOn_Chomp.RegisterAddonPrefix(): needBuffer: fullMsgOnly requires needBuffer to be true", 2)
+	elseif settings and type(settings) ~= "table" then
+		error("AddOn_Chomp.RegisterAddonPrefix(): settings: expected table or nil, got " .. type(settings), 2)
+	end
+	if not settings then
+		settings = {
+			permitUnlogged = true,
+			permitLogged = true,
+			permitBattleNet = true,
+		}
+	end
+	if settings.fullMsgOnly and not settings.needBuffer then
+		error("AddOn_Chomp.RegisterAddonPrefix(): settings.needBuffer: settings.fullMsgOnly requires settings.needBuffer to be true", 2)
 	end
 	local prefixID = prefix
 	if prefixType == "table" then
@@ -520,13 +530,18 @@ function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, needBuffer, fullMsgOn
 			BattleNet = {},
 			Logged = {},
 			Callbacks = {},
-			needBuffer = needBuffer,
-			fullMsgOnly = fullMsgOnly,
+			needBuffer = settings.needBuffer,
+			fullMsgOnly = settings.fullMsgOnly,
+			permitUnlogged = settings.permitUnlogged,
+			permitLogged = settings.permitLogged,
+			permitBattleNet = settings.permitBattleNet,
 		}
 		Internal.Prefixes[prefixID] = prefixData
 		if not C_ChatInfo.IsAddonMessagePrefixRegistered(prefixID) then
 			C_ChatInfo.RegisterAddonMessagePrefix(prefixID)
 		end
+	else
+		-- TODO: What if it's already registered?
 	end
 	if prefixType == "table" then
 		for i = 1, 3 do
@@ -663,24 +678,30 @@ function AddOn_Chomp.SmartAddonWhisper(prefix, text, target, priority, queue)
 	local loggedCapable = prefixData.Logged[target]
 	local sentBnet, sentLogged, sentInGame = false, false, false
 
-	local bnetIDGameAccount = BNGetIDGameAccount(target)
-	if bnetIDGameAccount and bnetCapable ~= false then
-		ToBattleNet(prefix, text, bnetIDGameAccount, priority, queue)
-		sentBnet = true
-		if bnetCapable == true then
-			return sentBnet, sentLogged, sentInGame
+	if prefixData.permitBattleNet then
+		local bnetIDGameAccount = BNGetIDGameAccount(target)
+		if bnetIDGameAccount and bnetCapable ~= false then
+			ToBattleNet(prefix, text, bnetIDGameAccount, priority, queue)
+			sentBnet = true
+			if bnetCapable == true then
+				return sentBnet, sentLogged, sentInGame
+			end
 		end
 	end
-	if loggedCapable ~= false then
-		ToInGameLogged(prefix, text, target, priority, queue)
-		sentLogged = true
-		if loggedCapable == true then
-			return sentBnet, sentLogged, sentInGame
+	if prefixData.permitLogged then
+		if loggedCapable ~= false then
+			ToInGameLogged(prefix, text, target, priority, queue)
+			sentLogged = true
+			if loggedCapable == true then
+				return sentBnet, sentLogged, sentInGame
+			end
 		end
 	end
-	ToInGame(prefix, text, target, priority, queue)
-	sentInGame = true
-	return sentBnet, sentLogged, sentInGame
+	if prefixData.permitUnlogged then
+		ToInGame(prefix, text, target, priority, queue)
+		sentInGame = true
+		return sentBnet, sentLogged, sentInGame
+	end
 end
 
 local ReportLocation = CreateFromMixins(PlayerLocationMixin)
