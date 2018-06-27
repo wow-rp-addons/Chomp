@@ -106,10 +106,6 @@ if not Internal.Prefixes then
 	Internal.Prefixes = {}
 end
 
-if not Internal.PrefixMap then
-	Internal.PrefixMap = {}
-end
-
 if not Internal.ErrorCallbacks then
 	Internal.ErrorCallbacks = {}
 end
@@ -144,11 +140,12 @@ local function HandleMessageIn(prefix, text, channel, sender)
 		return
 	end
 
-	if not Internal.Prefixes[prefix] then
+	local prefixData = Internal.Prefixes[prefix]
+	if not prefixData then
 		return
 	end
+	
 	local method = channel:match("%:(%u+)$")
-	local prefixData = Internal.Prefixes[prefix]
 	if (not method and not prefixData.permitUnlogged)
 		or (method == "BATTLENET" and not prefixData.permitBattleNet)
 		or (method == "LOGGED" and not prefixData.permitLogged)

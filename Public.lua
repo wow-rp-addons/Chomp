@@ -497,14 +497,10 @@ end
 
 function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, settings)
 	local prefixType = type(prefix)
-	if prefixType ~= "string" and prefixType ~= "table" then
-		error("AddOn_Chomp.RegisterAddonPrefix(): prefix: expected string or table, got " .. prefixType, 2)
-	elseif prefixType == "table" and not (prefix[0] and prefix[1] and prefix[2] and prefix[3]) then
-		error("AddOn_Chomp.RegisterAddonPrefix(): prefix: indicies [0], [1], [2], and [3] required, but some are missing", 2)
+	if prefixType ~= "string" then
+		error("AddOn_Chomp.RegisterAddonPrefix(): prefix: expected string, got " .. prefixType, 2)
 	elseif prefixType == "string" and #prefix > 16 then
 		error("AddOn_Chomp.RegisterAddonPrefix(): prefix: length cannot exceed 16 bytes", 2)
-	elseif prefixType == "table" and (#prefix[0] > 16 or #prefix[1] > 16 or #prefix[2] > 16 or #prefix[3] > 16) then
-		error("AddOn_Chomp.RegisterAddonPrefix(): prefix: length of indicies [0], [1], [2], and [3] cannot exceed 16 bytes each", 2)
 	elseif type(callback) ~= "function" then
 		error("AddOn_Chomp.RegisterAddonPrefix(): callback: expected function, got " .. type(callback), 2)
 	elseif settings and type(settings) ~= "table" then
@@ -520,11 +516,7 @@ function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, settings)
 	if settings.fullMsgOnly and not settings.needBuffer then
 		error("AddOn_Chomp.RegisterAddonPrefix(): settings.needBuffer: settings.fullMsgOnly requires settings.needBuffer to be true", 2)
 	end
-	local prefixID = prefix
-	if prefixType == "table" then
-		prefixID = prefix[0]
-	end
-	local prefixData = Internal.Prefixes[prefixID]
+	local prefixData = Internal.Prefixes[prefix]
 	if not prefixData then
 		prefixData = {
 			BattleNet = {},
@@ -536,22 +528,13 @@ function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, settings)
 			permitLogged = settings.permitLogged,
 			permitBattleNet = settings.permitBattleNet,
 		}
-		Internal.Prefixes[prefixID] = prefixData
-		if not C_ChatInfo.IsAddonMessagePrefixRegistered(prefixID) then
-			C_ChatInfo.RegisterAddonMessagePrefix(prefixID)
+		Internal.Prefixes[prefix] = prefixData
+		if not C_ChatInfo.IsAddonMessagePrefixRegistered(prefix) then
+			C_ChatInfo.RegisterAddonMessagePrefix(prefix)
 		end
 	else
 		-- TODO: What if it's already registered?
 	end
-	if prefixType == "table" then
-		for i = 1, 3 do
-			Internal.Prefixes[prefix[i]] = prefixData
-			if not C_ChatInfo.IsAddonMessagePrefixRegistered(prefix[i]) then
-				C_ChatInfo.RegisterAddonMessagePrefix(prefix[i])
-			end
-		end
-	end
-	Internal.PrefixMap[prefix] = prefixData
 	prefixData.Callbacks[#prefixData.Callbacks + 1] = callback
 end
 
@@ -585,7 +568,6 @@ end
 local nextSessionID = math.random(0, 4095)
 
 local function SplitAndSend(needEncode, needBuffer, sendFunc, maxSize, prefix, text, ...)
-	local prefixType = type(prefix)
 	if needEncode then
 		text = AddOn_Chomp.EncodeQuotedPrintable(text)
 	end
@@ -606,18 +588,6 @@ local function SplitAndSend(needEncode, needBuffer, sendFunc, maxSize, prefix, t
 		-- Only *need* to do a safe split for encoded channels, but doing so
 		-- always shouldn't hurt.
 		local msgText, offset = AddOn_Chomp.SafeSubString(text, position, position + maxSize - 1, textLen)
-		local outPrefix = prefix
-		if prefixType == "table" then
-			if textLen <= maxSize then
-				outPrefix = prefix[0]
-			elseif position == 1 then
-				outPrefix = prefix[1]
-			elseif position + maxSize - offset > textLen then
-				outPrefix = prefix[3]
-			else
-				outPrefix = prefix[2]
-			end
-		end
 		if needBuffer then
 			if offset > 0 then
 				-- Update total offset and total message number if needed.
@@ -627,19 +597,18 @@ local function SplitAndSend(needEncode, needBuffer, sendFunc, maxSize, prefix, t
 			msgID = msgID + 1
 			msgText = ("%03X%03X%03X%s"):format(sessionID, msgID, totalMsg, msgText)
 		end
-		sendFunc(outPrefix, msgText, ...)
+		sendFunc(prefix, msgText, ...)
 		position = position + maxSize - offset
 	end
 end
 
--- TODO: add pre-send manipulation functions.
 local function ToInGame(prefix, text, kind, target, priority, queue)
-	local prefixData = Internal.PrefixMap[prefix]
+	local prefixData = Internal.Prefixes[prefix]
 	return SplitAndSend(false, prefixData.needBuffer, AddOn_Chomp.SendAddonMessage, 255, prefix, text, kind, target, priority, queue)
 end
 
 local function ToInGameLogged(prefix, text, kind, target, priority, queue)
-	local prefixData = Internal.PrefixMap[prefix]
+	local prefixData = Internal.Prefixes[prefix]
 	return SplitAndSend(true, prefixData.needBuffer, AddOn_Chomp.SendAddonMessageLogged, 255, prefix, text, kind, target, priority, queue)
 end
 
@@ -648,15 +617,14 @@ local function BNSendGameDataRearrange(prefix, text, bnetIDGameAccount, ...)
 end
 
 local function ToBattleNet(prefix, text, kind, bnetIDGameAccount, priority)
-	--local prefixData = Internal.PrefixMap[prefix]
+	--local prefixData = Internal.Prefixes[prefix]
 	return SplitAndSend(false, true, BNSendGameDataRearrange, 4078, prefix, text, bnetIDGameAccount, priority, queue)
 end
 
 function AddOn_Chomp.SmartAddonMessage(prefix, text, kind, target, priority, queue)
-	local prefixType = type(prefix)
-	local prefixData = Internal.PrefixMap[prefix]
-	if prefixType ~= "string" and prefixType ~= "table" then
-		error("AddOn_Chomp.SmartAddonMessage(): prefix: expected string or table, got " .. prefixType, 2)
+	local prefixData = Internal.Prefixes[prefix]
+	if type(prefix) ~= "string" then
+		error("AddOn_Chomp.SmartAddonMessage(): prefix: expected string, got " .. type(prefix), 2)
 	elseif type(text) ~= "string" then
 		error("AddOn_Chomp.SmartAddonMessage(): text: expected string, got " .. type(text), 2)
 	elseif type(kind) ~= "string" then
@@ -709,10 +677,9 @@ end
 local ReportLocation = CreateFromMixins(PlayerLocationMixin)
 
 function AddOn_Chomp.CheckReportGUID(prefix, guid)
-	local prefixType = type(prefix)
-	local prefixData = Internal.PrefixMap[prefix]
-	if prefixType ~= "string" and prefixType ~= "table" then
-		error("AddOn_Chomp.ReportTarget(): prefix: expected string or table, got " .. prefixType, 2)
+	local prefixData = Internal.Prefixes[prefix]
+	if type(prefix) ~= "string" then
+		error("AddOn_Chomp.ReportTarget(): prefix: expected string, got " .. type(prefix), 2)
 	elseif type(guid) ~= "string" then
 		error("AddOn_Chomp.ReportTarget(): guid: expected string, got " .. type(guid), 2)
 	elseif not prefixData then
@@ -734,10 +701,9 @@ function AddOn_Chomp.CheckReportGUID(prefix, guid)
 end
 
 function AddOn_Chomp.ReportGUID(prefix, guid)
-	local prefixType = type(prefix)
-	local prefixData = Internal.PrefixMap[prefix]
-	if prefixType ~= "string" and prefixType ~= "table" then
-		error("AddOn_Chomp.ReportTarget(): prefix: expected string or table, got " .. prefixType, 2)
+	local prefixData = Internal.Prefixes[prefix]
+	if type(prefix) ~= "string" then
+		error("AddOn_Chomp.ReportTarget(): prefix: expected string, got " .. type(prefix), 2)
 	elseif type(guid) ~= "string" then
 		error("AddOn_Chomp.ReportTarget(): guid: expected string, got " .. type(guid), 2)
 	elseif not prefixData then
