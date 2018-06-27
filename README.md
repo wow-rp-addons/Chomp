@@ -47,22 +47,3 @@ and official records will need to be relied upon in the distant future.
 In the cases of anonymous or pseudonymous contributions that cannot be tied to
 a legal name or a lifespan, the year of the contribution will be included in the
 notices for that particular author.
-
-Meaning of the License
-======================
-In the unlikely case of a legal dispute involving this software, the following
-may be used by the courts to judge the original author's intent behind the use
-of this license and their understanding of what rights and restrictions it
-places on the software.
-
-The author intends the license to permit nearly-unlimited use, modification, and
-distribution of the software. The author intends the license to grant the same
-permissions and restrictions to modified copies of the software as are granted
-to unmodified copies. Authors of modifications may grant additional permissions
-or impose additional restrictions on their portions of a modified copy of the
-software (potentially adding restrictions on a modified copy of the software as
-a whole), but the original author's grants remain the same regardless.
-
-And there's no warranty, interpreted by the original author as meaning nobody
-will attempt to sue them over it. The world has been warned that the sofware
-could do horrible, unexpected things, and it's not the author's fault.
