@@ -75,10 +75,6 @@ local PRIORITIES = { "HIGH", "MEDIUM", "LOW" }
 
 local PRIORITY_TO_CTL = { LOW = "BULK",  MEDIUM = "NORMAL", HIGH = "ALERT" }
 
--- Realm part matching is greedy, as realm names will rarely have dashes, but
--- player names will never.
-local FULL_PLAYER_SPLIT = FULL_PLAYER_NAME:gsub("-", "%%%%-"):format("^(.-)", "(.+)$")
-
 local COMMON_EVENTS = {
 	"CHAT_MSG_CHANNEL",
 	"CHAT_MSG_GUILD",
@@ -116,22 +112,6 @@ end
 --[[
 	HELPER FUNCTIONS
 ]]
-
-local function NameWithRealm(name, realm)
-	if not realm or realm == "" then
-		-- Normally you'd just return the full input name without reformatting,
-		-- but Blizzard has started returning an occasional "Name-Realm Name"
-		-- combination with spaces and hyphens in the realm name.
-		local splitName, splitRealm = name:match(FULL_PLAYER_SPLIT)
-		if splitName and splitRealm then
-			name = splitName
-			realm = splitRealm
-		else
-			realm = GetRealmName()
-		end
-	end
-	return FULL_PLAYER_NAME:format(name, (realm:gsub("%s*%-*", "")))
-end
 
 local function HandleMessageIn(prefix, text, channel, sender)
 	if not IsLoggedIn() then
@@ -213,11 +193,11 @@ local function HandleMessageIn(prefix, text, channel, sender)
 end
 
 local function ParseInGameMessage(prefix, text, kind, sender)
-	return prefix, text, kind, NameWithRealm(sender)
+	return prefix, text, kind, AddOn_Chomp.NameMergedRealm(sender)
 end
 
 local function ParseInGameMessageLogged(prefix, text, kind, sender)
-	local name = NameWithRealm(sender)
+	local name = AddOn_Chomp.NameMergedRealm(sender)
 	if Internal.Prefixes[prefix] then
 		Internal.Prefixes[prefix].Logged[name] = true
 	end
@@ -226,7 +206,7 @@ end
 
 local function ParseBattleNetMessage(prefix, text, kind, bnetIDGameAccount)
 	local active, characterName, client, realmName = BNGetGameAccountInfo(bnetIDGameAccount)
-	local name = NameWithRealm(characterName, realmName)
+	local name = AddOn_Chomp.NameMergedRealm(characterName, realmName)
 	if Internal.Prefixes[prefix] then
 		Internal.Prefixes[prefix].BattleNet[name] = true
 	end
@@ -512,5 +492,4 @@ Internal:SetScript("OnShow", function(self)
 	self.lastDraw = GetTime()
 end)
 
-Internal.NameWithRealm = NameWithRealm
 Internal.VERSION = VERSION

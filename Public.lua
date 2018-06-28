@@ -73,6 +73,32 @@ local DEFAULT_PRIORITY = "MEDIUM"
 local PRIORITIES_HASH = { HIGH = true, MEDIUM = true, LOW = true }
 local INGAME_OVERHEAD = 24
 
+-- Realm part matching is greedy, as realm names will rarely have dashes, but
+-- player names will never.
+local FULL_PLAYER_SPLIT = FULL_PLAYER_NAME:gsub("-", "%%%%-"):format("^(.-)", "(.+)$")
+local FULL_PLAYER_FIND = FULL_PLAYER_NAME:gsub("-", "%%%%-"):format("^.-", ".+$")
+function AddOn_Chomp.NameMergedRealm(name, realm)
+	if type(name) ~= "string" then
+		error("AddOn_Chomp.NameMergedRealm(): name: expected string, got " .. type(name), 2)
+	elseif name == "" then
+		error("AddOn_Chomp.NameMergedRealm(): name: expected non-empty string", 2)
+	elseif not realm or realm == "" then
+		-- Normally you'd just return the full input name without reformatting,
+		-- but Blizzard has started returning an occasional "Name-Realm Name"
+		-- combination with spaces and hyphens in the realm name.
+		local splitName, splitRealm = name:match(FULL_PLAYER_SPLIT)
+		if splitName and splitRealm then
+			name = splitName
+			realm = splitRealm
+		else
+			realm = GetRealmName()
+		end
+	elseif name:find(FULL_PLAYER_FIND) then
+		error("AddOn_Chomp.NameMergedRealm(): name already has a realm name, but realm name also provided")
+	end
+	return FULL_PLAYER_NAME:format(name, (realm:gsub("%s*%-*", "")))
+end
+
 local function QueueMessageOut(func, ...)
 	if not Internal.OutgoingQueue then
 		Internal.OutgoingQueue = {}
@@ -540,16 +566,14 @@ function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, settings)
 	prefixData.Callbacks[#prefixData.Callbacks + 1] = callback
 end
 
-local NameWithRealm = Internal.NameWithRealm
-
 local function BNGetIDGameAccount(name)
 	-- The second conditional checks for appearing offline. This has to run
 	-- after PLAYER_LOGIN, hence Chomp queuing outgoing messages until then.
 	if not BNConnected() or not BNGetGameAccountInfoByGUID(UnitGUID("player")) then
 		return nil
 	end
-	name = NameWithRealm(name)
-	if name == NameWithRealm(UnitFullName("player")) then
+	name = AddOn_Chomp.NameMergedRealm(name)
+	if name == AddOn_Chomp.NameMergedRealm(UnitFullName("player")) then
 		return (select(16, BNGetGameAccountInfoByGUID(UnitGUID("player"))))
 	end
 	for i = 1, select(2, BNGetNumFriends()) do
@@ -558,7 +582,7 @@ local function BNGetIDGameAccount(name)
 			if isConnected and client == BNET_CLIENT_WOW then
 				if not realmName or realmName == "" then
 					return nil
-				elseif name == NameWithRealm(characterName, realmName) then
+				elseif name == AddOn_Chomp.NameMergedRealm(characterName, realmName) then
 					return bnetIDGameAccount
 				end
 			end
@@ -645,7 +669,7 @@ function AddOn_Chomp.SmartAddonMessage(prefix, text, kind, target, priority, que
 		QueueMessageOut("SmartAddonMessage", prefix, text, kind, target, priority, queue)
 	end
 
-	target = NameWithRealm(target)
+	target = AddOn_Chomp.NameMergedRealm(target)
 	local bnetCapable = prefixData.BattleNet[target]
 	local loggedCapable = prefixData.Logged[target]
 	local sentBnet, sentLogged, sentInGame = false, false, false
@@ -691,7 +715,7 @@ function AddOn_Chomp.CheckReportGUID(prefix, guid)
 	if not success then
 		return false, "UNKNOWN"
 	end
-	local target = NameWithRealm(name, realm)
+	local target = AddOn_Chomp.NameMergedRealm(name, realm)
 	if prefixData.BattleNet[target] then
 		return false, "BATTLENET"
 	elseif prefixData.Logged[target] then
