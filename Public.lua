@@ -711,12 +711,12 @@ function AddOn_Chomp.CheckReportGUID(prefix, guid)
 		return false, "UNKNOWN"
 	end
 	local target = AddOn_Chomp.NameMergedRealm(name, realm)
-	if prefixData.BattleNet[target] then
-		return false, "BATTLENET"
-	elseif prefixData.Logged[target] then
+	if prefixData.Logged[target] then
 		ReportLocation:SetGUID(guid)
 		local isReportable = C_ChatInfo.CanReportPlayer(ReportLocation)
 		return isReportable, "LOGGED"
+	elseif prefixData.BattleNet[target] then
+		return false, "BATTLENET"
 	end
 	return false, "UNLOGGED"
 end
