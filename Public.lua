@@ -703,15 +703,15 @@ end
 function AddOn_Chomp.ReportGUID(prefix, guid)
 	local prefixData = Internal.Prefixes[prefix]
 	if type(prefix) ~= "string" then
-		error("AddOn_Chomp.ReportTarget(): prefix: expected string, got " .. type(prefix), 2)
+		error("AddOn_Chomp.ReportGUID(): prefix: expected string, got " .. type(prefix), 2)
 	elseif type(guid) ~= "string" then
-		error("AddOn_Chomp.ReportTarget(): guid: expected string, got " .. type(guid), 2)
+		error("AddOn_Chomp.ReportGUID(): guid: expected string, got " .. type(guid), 2)
 	elseif not prefixData then
-		error("AddOn_Chomp.ReportTarget(): prefix: prefix has not been registered with Chomp", 2)
+		error("AddOn_Chomp.ReportGUID(): prefix: prefix has not been registered with Chomp", 2)
 	elseif prefixData.BattleNet[target] then
-		error("AddOn_Chomp.ReportTarget(): target uses BattleNet messages and cannot be reported", 2)
+		error("AddOn_Chomp.ReportGUID(): target uses BattleNet messages and cannot be reported", 2)
 	elseif not prefixData.Logged[target] then
-		error("AddOn_Chomp.ReportTarget(): target uses unlogged messages and cannot be reported", 2)
+		error("AddOn_Chomp.ReportGUID(): target uses unlogged messages and cannot be reported", 2)
 	end
 	local canReport, reason = AddOn_Chomp.CheckReportGUID(prefix, guid)
 	if canReport then
