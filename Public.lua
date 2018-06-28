@@ -70,6 +70,7 @@ end
 
 local DEFAULT_PRIORITY = "MEDIUM"
 local PRIORITIES_HASH = { HIGH = true, MEDIUM = true, LOW = true }
+local INGAME_OVERHEAD = 24
 
 local function QueueMessageOut(func, ...)
 	if not Internal.OutgoingQueue then
@@ -98,8 +99,6 @@ function AddOn_Chomp.SendAddonMessage(prefix, text, kind, target, priority, queu
 		error("AddOn_Chomp.SendAddonMessage(): callback: expected function or nil, got " .. type(callback), 2)
 	end
 
-	kind = not kind and "PARTY" or kind:upper()
-
 	local length = #text
 	if length > 255 then
 		error("AddOn_Chomp.SendAddonMessage(): text length cannot exceed 255 bytes", 2)
@@ -109,14 +108,16 @@ function AddOn_Chomp.SendAddonMessage(prefix, text, kind, target, priority, queu
 	if not IsLoggedIn() then
 		QueueMessageOut("SendAddonMessage", prefix, text, kind, target, priority, queue, callback, callbackArg)
 	end
-	
-	if target then
-		if kind == "WHISPER" then
-			target = Ambiguate(target, "none")
-		end
-		length = length + #tostring(target)
+
+	if not kind then
+		kind = "PARTY"
+	else
+		kind = kind:upper()
 	end
-	length = length + 16 + #kind
+	if target and kind == "WHISPER" then
+		target = Ambiguate(target, "none")
+	end
+	length = length + #prefix + INGAME_OVERHEAD
 
 	if Internal.ChatThrottleLib and not ChatThrottleLib.isChomp then
 		-- CTL likes to drop RAID messages, despite the game falling back
@@ -174,8 +175,6 @@ function AddOn_Chomp.SendAddonMessageLogged(prefix, text, kind, target, priority
 		error("AddOn_Chomp.SendAddonMessageLogged(): callback: expected function or nil, got " .. type(callback), 2)
 	end
 
-	kind = not kind and "PARTY" or kind:upper()
-
 	local length = #text
 	if length > 255 then
 		error("AddOn_Chomp.SendAddonMessageLogged(): text length cannot exceed 255 bytes", 2)
@@ -186,13 +185,15 @@ function AddOn_Chomp.SendAddonMessageLogged(prefix, text, kind, target, priority
 		QueueMessageOut("SendAddonMessageLogged", prefix, text, kind, target, priority, queue, callback, callbackArg)
 	end
 	
-	if target then
-		if kind == "WHISPER" then
-			target = Ambiguate(target, "none")
-		end
-		length = length + #tostring(target)
+	if not kind then
+		kind = "PARTY"
+	else
+		kind = kind:upper()
 	end
-	length = length + 16 + #kind
+	if target and kind == "WHISPER" then
+		target = Ambiguate(target, "none")
+	end
+	length = length + #prefix + INGAME_OVERHEAD
 
 	if Internal.ChatThrottleLib and not ChatThrottleLib.isChomp then
 		-- CTL likes to drop RAID messages, despite the game falling back
@@ -257,16 +258,16 @@ function AddOn_Chomp.SendChatMessage(text, kind, language, target, priority, que
 	if not IsLoggedIn() then
 		QueueMessageOut("SendChatMessage", text, kind, language, target, priority, queue, callback, callbackArg)
 	end
-	if kind then
-		length = length + #kind
+
+	if not kind then
+		kind = "SAY"
+	else
 		kind = kind:upper()
 	end
-	if target then
-		if kind == "WHISPER" then
-			target = Ambiguate(target, "none")
-		end
-		length = length + #tostring(target)
+	if target and kind == "WHISPER" then
+		target = Ambiguate(target, "none")
 	end
+	length = length + INGAME_OVERHEAD
 
 	if Internal.ChatThrottleLib and not ChatThrottleLib.isChomp then
 		-- CTL likes to drop RAID messages, despite the game falling back

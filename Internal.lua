@@ -63,7 +63,10 @@ end
 ]]
 
 -- Safe instantaneous burst bytes and safe susatined bytes per second.
-local INGAME_BURST, INGAME_BPS = 4130, 1475
+-- These values were safe on 8.0 beta, but are unsafe on 7.3 live.
+--local INGAME_BURST, INGAME_BPS = 16384, 4096
+local INGAME_BURST, INGAME_BPS = 8192, 2048
+local INGAME_OVERHEAD = 24
 local BATTLENET_BURST, BATTLENET_BPS = 8196, 4098
 
 local POOL_TICK = 0.2
@@ -397,7 +400,7 @@ local function HookSendAddonMessage(prefix, text, kind, target)
 		Internal.Filter[target] = GetTime() + (select(3, GetNetStats()) * 0.001) + 5.000
 	end
 	if Internal.isSending then return end
-	Internal.Pools.InGame.bytes = Internal.Pools.InGame.bytes - (#tostring(text) + #kind + 16 + (target and #tostring(target) or 0))
+	Internal.Pools.InGame.bytes = Internal.Pools.InGame.bytes - (#tostring(text) + #tostring(prefix) + INGAME_OVERHEAD)
 end
 
 local function HookSendAddonMessageLogged(prefix, text, kind, target)
@@ -405,12 +408,12 @@ local function HookSendAddonMessageLogged(prefix, text, kind, target)
 		Internal.Filter[target] = GetTime() + (select(3, GetNetStats()) * 0.001) + 5.000
 	end
 	if Internal.isSending then return end
-	Internal.Pools.InGame.bytes = Internal.Pools.InGame.bytes - (#tostring(text) + #kind + 16 + (target and #tostring(target) or 0))
+	Internal.Pools.InGame.bytes = Internal.Pools.InGame.bytes - (#tostring(text) + #tostring(prefix) + INGAME_OVERHEAD)
 end
 
 local function HookSendChatMessage(text, kind, language, target)
 	if Internal.isSending then return end
-	Internal.Pools.InGame.bytes = Internal.Pools.InGame.bytes - (#tostring(text) + (kind and #kind or 0) + (target and #tostring(target) or 0))
+	Internal.Pools.InGame.bytes = Internal.Pools.InGame.bytes - (#tostring(text) + INGAME_OVERHEAD)
 end
 
 local function HookBNSendGameData(bnetIDGameAccount, prefix, text)
