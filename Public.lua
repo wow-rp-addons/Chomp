@@ -71,7 +71,7 @@ end
 
 local DEFAULT_PRIORITY = "MEDIUM"
 local PRIORITIES_HASH = { HIGH = true, MEDIUM = true, LOW = true }
-local INGAME_OVERHEAD = 24
+local OVERHEAD = 24
 
 -- Realm part matching is greedy, as realm names will rarely have dashes, but
 -- player names will never.
@@ -144,7 +144,7 @@ function AddOn_Chomp.SendAddonMessage(prefix, text, kind, target, priority, queu
 	if target and kind == "WHISPER" then
 		target = Ambiguate(target, "none")
 	end
-	length = length + #prefix + INGAME_OVERHEAD
+	length = length + #prefix + OVERHEAD
 
 	if Internal.ChatThrottleLib and not ChatThrottleLib.isChomp then
 		-- CTL likes to drop RAID messages, despite the game falling back
@@ -156,9 +156,8 @@ function AddOn_Chomp.SendAddonMessage(prefix, text, kind, target, priority, queu
 		return
 	end
 
-	local InGame = Internal.Pools.InGame
-	if not InGame.hasQueue and length <= InGame:Update() then
-		InGame.bytes = InGame.bytes - length
+	if not Internal.hasQueue and length <= Internal:UpdateBytes() then
+		Internal.bytes = Internal.bytes - length
 		Internal.isSending = true
 		C_ChatInfo.SendAddonMessage(prefix, text, kind, target)
 		Internal.isSending = false
@@ -180,7 +179,7 @@ function AddOn_Chomp.SendAddonMessage(prefix, text, kind, target, priority, queu
 		callbackArg = callbackArg,
 	}
 
-	return InGame:Enqueue(priority or DEFAULT_PRIORITY, queue or ("%s%s%s"):format(prefix, kind, (tostring(target) or "")), message)
+	return Internal:Enqueue(priority or DEFAULT_PRIORITY, queue or ("%s%s%s"):format(prefix, kind, (tostring(target) or "")), message)
 end
 
 function AddOn_Chomp.SendAddonMessageLogged(prefix, text, kind, target, priority, queue, callback, callbackArg)
@@ -220,7 +219,7 @@ function AddOn_Chomp.SendAddonMessageLogged(prefix, text, kind, target, priority
 	if target and kind == "WHISPER" then
 		target = Ambiguate(target, "none")
 	end
-	length = length + #prefix + INGAME_OVERHEAD
+	length = length + #prefix + OVERHEAD
 
 	if Internal.ChatThrottleLib and not ChatThrottleLib.isChomp then
 		-- CTL likes to drop RAID messages, despite the game falling back
@@ -232,9 +231,8 @@ function AddOn_Chomp.SendAddonMessageLogged(prefix, text, kind, target, priority
 		return
 	end
 
-	local InGame = Internal.Pools.InGame
-	if not InGame.hasQueue and length <= InGame:Update() then
-		InGame.bytes = InGame.bytes - length
+	if not Internal.hasQueue and length <= Internal:UpdateBytes() then
+		Internal.bytes = Internal.bytes - length
 		Internal.isSending = true
 		C_ChatInfo.SendAddonMessageLogged(prefix, text, kind, target)
 		Internal.isSending = false
@@ -256,7 +254,7 @@ function AddOn_Chomp.SendAddonMessageLogged(prefix, text, kind, target, priority
 		callbackArg = callbackArg,
 	}
 
-	return InGame:Enqueue(priority or DEFAULT_PRIORITY, queue or ("%s%s%s"):format(prefix, kind, (tostring(target) or "")), message)
+	return Internal:Enqueue(priority or DEFAULT_PRIORITY, queue or ("%s%s%s"):format(prefix, kind, (tostring(target) or "")), message)
 end
 
 function AddOn_Chomp.SendChatMessage(text, kind, language, target, priority, queue, callback, callbackArg)
@@ -294,7 +292,7 @@ function AddOn_Chomp.SendChatMessage(text, kind, language, target, priority, que
 	if target and kind == "WHISPER" then
 		target = Ambiguate(target, "none")
 	end
-	length = length + INGAME_OVERHEAD
+	length = length + OVERHEAD
 
 	if Internal.ChatThrottleLib and not ChatThrottleLib.isChomp then
 		-- CTL likes to drop RAID messages, despite the game falling back
@@ -306,9 +304,8 @@ function AddOn_Chomp.SendChatMessage(text, kind, language, target, priority, que
 		return
 	end
 
-	local InGame = Internal.Pools.InGame
-	if not InGame.hasQueue and length <= InGame:Update() then
-		InGame.bytes = InGame.bytes - length
+	if not Internal.hasQueue and length <= Internal:UpdateBytes() then
+		Internal.bytes = Internal.bytes - length
 		Internal.isSending = true
 		SendChatMessage(text, kind, language, target)
 		Internal.isSending = false
@@ -330,7 +327,7 @@ function AddOn_Chomp.SendChatMessage(text, kind, language, target, priority, que
 		callbackArg = callbackArg,
 	}
 
-	return InGame:Enqueue(priority or DEFAULT_PRIORITY, queue or kind .. (target or ""), message)
+	return Internal:Enqueue(priority or DEFAULT_PRIORITY, queue or kind .. (target or ""), message)
 end
 
 function AddOn_Chomp.BNSendGameData(bnetIDGameAccount, prefix, text, priority, queue, callback, callbackArg)
@@ -361,9 +358,8 @@ function AddOn_Chomp.BNSendGameData(bnetIDGameAccount, prefix, text, priority, q
 
 	length = length + 18 -- 16 byte prefix, 2 byte bnetIDAccount
 
-	local BattleNet = Internal.Pools.BattleNet
-	if not BattleNet.hasQueue and length <= BattleNet:Update() then
-		BattleNet.bytes = BattleNet.bytes - length
+	if not Internal.hasQueue and length <= Internal:UpdateBytes() then
+		Internal.bytes = Internal.bytes - length
 		Internal.isSending = true
 		BNSendGameData(bnetIDGameAccount, prefix, text)
 		Internal.isSending = false
@@ -383,7 +379,7 @@ function AddOn_Chomp.BNSendGameData(bnetIDGameAccount, prefix, text, priority, q
 		callbackArg = callbackArg,
 	}
 
-	return BattleNet:Enqueue(priority or DEFAULT_PRIORITY, queue or ("%s%d"):format(prefix, bnetIDGameAccount), message)
+	return Internal:Enqueue(priority or DEFAULT_PRIORITY, queue or ("%s%d"):format(prefix, bnetIDGameAccount), message)
 end
 
 function AddOn_Chomp.BNSendWhisper(bnetIDAccount, text, priority, queue, callback, callbackArg)
@@ -410,9 +406,8 @@ function AddOn_Chomp.BNSendWhisper(bnetIDAccount, text, priority, queue, callbac
 
 	length = length + 2 -- 2 byte bnetIDAccount
 
-	local BattleNet = Internal.Pools.BattleNet
-	if not BattleNet.hasQueue and length <= BattleNet:Update() then
-		BattleNet.bytes = BattleNet.bytes - length
+	if not Internal.hasQueue and length <= Internal:UpdateBytes() then
+		Internal.bytes = Internal.bytes - length
 		Internal.isSending = true
 		BNSendWhisper(bnetIDAccount, text)
 		Internal.isSending = false
@@ -431,7 +426,7 @@ function AddOn_Chomp.BNSendWhisper(bnetIDAccount, text, priority, queue, callbac
 		callbackArg = callbackArg,
 	}
 
-	return BattleNet:Enqueue(priority or DEFAULT_PRIORITY, queue or tostring(bnetIDAccount), message)
+	return Internal:Enqueue(priority or DEFAULT_PRIORITY, queue or tostring(bnetIDAccount), message)
 end
 
 function AddOn_Chomp.IsSending()
@@ -674,21 +669,21 @@ function AddOn_Chomp.SmartAddonMessage(prefix, text, kind, target, priority, que
 	local loggedCapable = prefixData.Logged[target]
 	local sentBnet, sentLogged, sentInGame = false, false, false
 
+	if prefixData.permitLogged then
+		if loggedCapable ~= false then
+			ToInGameLogged(prefix, text, kind, target, priority, queue)
+			sentLogged = true
+			if loggedCapable == true then
+				return sentBnet, sentLogged, sentInGame
+			end
+		end
+	end
 	if prefixData.permitBattleNet and kind == "WHISPER" then
 		local bnetIDGameAccount = BNGetIDGameAccount(target)
 		if bnetIDGameAccount and bnetCapable ~= false then
 			ToBattleNet(prefix, text, kind, bnetIDGameAccount, priority, queue)
 			sentBnet = true
 			if bnetCapable == true then
-				return sentBnet, sentLogged, sentInGame
-			end
-		end
-	end
-	if prefixData.permitLogged then
-		if loggedCapable ~= false then
-			ToInGameLogged(prefix, text, kind, target, priority, queue)
-			sentLogged = true
-			if loggedCapable == true then
 				return sentBnet, sentLogged, sentInGame
 			end
 		end
@@ -777,23 +772,18 @@ function AddOn_Chomp.UnegisterErrorCallback(callback)
 	return false
 end
 
-function AddOn_Chomp.GetBPS(pool)
-	if not Internal.Pools[pool] then
-		error("AddOn_Chomp.GetBPS(): pool: expected \"InGame\" or \"BattleNet\", got " .. tostring(pool), 2)
-	end
-	return Internal.Pools[pool].BPS, Internal.Pools[pool].BURST
+function AddOn_Chomp.GetBPS()
+	return Internal.BPS, Internal.BURST
 end
 
-function AddOn_Chomp.SetBPS(pool, bps, burst)
-	if not Internal.Pools[pool] then
-		error("AddOn_Chomp.GetBPS(): pool: expected \"InGame\" or \"BattleNet\", got " .. tostring(pool), 2)
-	elseif type(bps) ~= "number" then
+function AddOn_Chomp.SetBPS(bps, burst)
+	if type(bps) ~= "number" then
 		error("AddOn_Chomp.SetBPS(): bps: expected number, got " .. type(bps), 2)
 	elseif type(burst) ~= "number" then
 		error("AddOn_Chomp.SetBPS(): burst: expected number, got " .. type(burst), 2)
 	end
-	Internal.Pools[pool].BPS = bps
-	Internal.Pools[pool].BURST = burst
+	Internal.BPS = bps
+	Internal.BURST = burst
 end
 
 function AddOn_Chomp.GetVersion()

@@ -63,11 +63,12 @@ end
 ]]
 
 -- Safe instantaneous burst bytes and safe susatined bytes per second.
--- These values were safe on 8.0 beta, but are unsafe on 7.3 live.
---local INGAME_BURST, INGAME_BPS = 16384, 4096
-local INGAME_BURST, INGAME_BPS = 8192, 2048
-local INGAME_OVERHEAD = 24
-local BATTLENET_BURST, BATTLENET_BPS = 8196, 4098
+local BURST, BPS = 8192, 2048
+-- These values were safe on 8.0 beta, but are unsafe on 7.3 live. Normally I'd
+-- love to automatically use them if 8.0 is live, but it's not 100% clear if
+-- this is a 8.0 thing or a test realm thing.
+--local BURST, BPS = 16384, 4096
+local OVERHEAD = 24
 
 local POOL_TICK = 0.2
 
@@ -95,10 +96,6 @@ local COMMON_EVENTS = {
 
 if not Internal.Filter then
 	Internal.Filter = {}
-end
-
-if not Internal.Pools then
-	Internal.Pools = {}
 end
 
 if not Internal.Prefixes then
@@ -214,11 +211,11 @@ local function ParseBattleNetMessage(prefix, text, kind, bnetIDGameAccount)
 end
 
 --[[
-	POOLS (INGAME/BATTLENET)
+	INTERNAL BANDWIDTH POOL
 ]]
 
-local function PoolRun(self)
-	if self:Update() <= 0 then
+function Internal:RunQueue()
+	if self:UpdateBytes() <= 0 then
 		return
 	end
 	local active = {}
@@ -243,9 +240,9 @@ local function PoolRun(self)
 			local didSend = false
 			if (message.kind ~= "RAID" and message.kind ~= "PARTY" or IsInGroup(LE_PARTY_CATEGORY_HOME)) and (message.kind ~= "INSTANCE_CHAT" or IsInGroup(LE_PARTY_CATEGORY_INSTANCE)) then
 				priority.bytes = priority.bytes - message.length
-				Internal.isSending = true
+				self.isSending = true
 				didSend = message.f(unpack(message, 1, 4)) ~= false
-				Internal.isSending = false
+				self.isSending = false
 			end
 			if message.callback then
 				xpcall(message.callback, geterrorhandler(), message.callbackArg, didSend)
@@ -262,7 +259,7 @@ local function PoolRun(self)
 	end
 end
 
-local function PoolBytesUpdate(self)
+function Internal:UpdateBytes()
 	local BPS, BURST = self.BPS, self.BURST
 	if InCombatLockdown() then
 		BPS = BPS * 0.50
@@ -279,7 +276,7 @@ local function PoolBytesUpdate(self)
 	return bytes
 end
 
-local function PoolEnqueue(self, priorityName, queueName, message)
+function Internal:Enqueue(priorityName, queueName, message)
 	local priority = self[priorityName]
 	local queue = priority.byName[queueName]
 	if not queue then
@@ -291,51 +288,32 @@ local function PoolEnqueue(self, priorityName, queueName, message)
 		priority[#priority + 1] = queue
 	end
 	queue[#queue + 1] = message
-	self.hasQueue = true
-	Internal.Pools:Start()
+	self:StartQueue()
 end
 
-local function CreatePool(burst, bps)
-	local pool = {
-		bytes = 0,
-		lastByteUpdate = GetTime(),
-		BPS = bps,
-		BURST = burst,
-		Run = PoolRun,
-		Update = PoolBytesUpdate,
-		Enqueue = PoolEnqueue,
-	}
-	for i, priority in ipairs(PRIORITIES) do
-		pool[priority] = { bytes = 0, byName = {}, Remove = table.remove, }
-	end
-	return pool
+Internal.bytes = 0
+Internal.lastByteUpdate = GetTime()
+Internal.BPS = BPS
+Internal.BURST = BURST
+
+for i, priority in ipairs(PRIORITIES) do
+	Internal[priority] = { bytes = 0, byName = {}, Remove = table.remove, }
 end
 
-function Internal.Pools:Start()
-	if not self.isActive then
-		self.isActive = true
+function Internal:StartQueue()
+	if not self.hasQueue then
+		self.hasQueue = true
 		C_Timer.After(POOL_TICK, self.OnTick)
 	end
 end
 
-function Internal.Pools:RunPool(poolName)
-	if self[poolName].hasQueue then
-		self[poolName]:Run()
-		if self[poolName].hasQueue then
-			self.isActive = true
-		end
-	end
-end
-
-function Internal.Pools.OnTick()
-	local self = Internal.Pools
-	if not self.isActive then
+function Internal.OnTick()
+	local self = Internal
+	if not self.hasQueue then
 		return
 	end
-	self.isActive = false
-	self:RunPool("InGame")
-	self:RunPool("BattleNet")
-	if self.isActive then
+	self:RunQueue()
+	if self.hasQueue then
 		C_Timer.After(POOL_TICK, self.OnTick)
 	end
 end
@@ -380,7 +358,7 @@ local function HookSendAddonMessage(prefix, text, kind, target)
 		Internal.Filter[target] = GetTime() + (select(3, GetNetStats()) * 0.001) + 5.000
 	end
 	if Internal.isSending then return end
-	Internal.Pools.InGame.bytes = Internal.Pools.InGame.bytes - (#tostring(text) + #tostring(prefix) + INGAME_OVERHEAD)
+	Internal.bytes = Internal.bytes - (#tostring(text) + #tostring(prefix) + OVERHEAD)
 end
 
 local function HookSendAddonMessageLogged(prefix, text, kind, target)
@@ -388,22 +366,22 @@ local function HookSendAddonMessageLogged(prefix, text, kind, target)
 		Internal.Filter[target] = GetTime() + (select(3, GetNetStats()) * 0.001) + 5.000
 	end
 	if Internal.isSending then return end
-	Internal.Pools.InGame.bytes = Internal.Pools.InGame.bytes - (#tostring(text) + #tostring(prefix) + INGAME_OVERHEAD)
+	Internal.bytes = Internal.bytes - (#tostring(text) + #tostring(prefix) + OVERHEAD)
 end
 
 local function HookSendChatMessage(text, kind, language, target)
 	if Internal.isSending then return end
-	Internal.Pools.InGame.bytes = Internal.Pools.InGame.bytes - (#tostring(text) + INGAME_OVERHEAD)
+	Internal.bytes = Internal.bytes - (#tostring(text) + OVERHEAD)
 end
 
 local function HookBNSendGameData(bnetIDGameAccount, prefix, text)
 	if Internal.isSending then return end
-	Internal.Pools.BattleNet.bytes = Internal.Pools.BattleNet.bytes - (#tostring(text) + 18)
+	Internal.bytes = Internal.bytes - (#tostring(text) + #tostring(prefix) + OVERHEAD)
 end
 
 local function HookBNSendWhisper(bnetIDAccount, text)
 	if Internal.isSending then return end
-	Internal.Pools.BattleNet.bytes = Internal.Pools.BattleNet.bytes - (#tostring(text) + 2)
+	Internal.bytes = Internal.bytes - (#tostring(text) + OVERHEAD)
 end
 
 --[[
@@ -435,8 +413,6 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 		ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", MessageEventFilter_SYSTEM)
 		hooksecurefunc("RestartGx", HookRestartGx)
 		HookRestartGx()
-		self.Pools.InGame = CreatePool(INGAME_BURST, INGAME_BPS)
-		self.Pools.BattleNet = CreatePool(BATTLENET_BURST, BATTLENET_BPS)
 		if self.IncomingQueue then
 			for i, q in ipairs(self.IncomingQueue) do
 				HandleMessageIn(table.unpack(q, 1, 4))
@@ -472,8 +448,8 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 		self.unloadTime = nil
 	end
 	if self:IsVisible() and self.lastDraw < GetTime() - 5 then
-		if self.Pools.isActive then
-			self.Pools.OnTick()
+		if self.hasQueue then
+			self.OnTick()
 		end
 		if self.ChatThrottleLib then
 			local f = ChatThrottleLib.Frame
