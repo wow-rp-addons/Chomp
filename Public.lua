@@ -708,15 +708,17 @@ function AddOn_Chomp.ReportGUID(prefix, guid)
 		error("AddOn_Chomp.ReportGUID(): guid: expected string, got " .. type(guid), 2)
 	elseif not prefixData then
 		error("AddOn_Chomp.ReportGUID(): prefix: prefix has not been registered with Chomp", 2)
-	elseif prefixData.BattleNet[target] then
-		error("AddOn_Chomp.ReportGUID(): target uses BattleNet messages and cannot be reported", 2)
-	elseif not prefixData.Logged[target] then
-		error("AddOn_Chomp.ReportGUID(): target uses unlogged messages and cannot be reported", 2)
 	end
 	local canReport, reason = AddOn_Chomp.CheckReportGUID(prefix, guid)
 	if canReport then
 		C_ChatInfo.ReportPlayer(PLAYER_REPORT_TYPE_LANGUAGE, ReportLocation, "Objectionable content in logged addon messages.")
 		return true, reason
+	else
+		if reason == "BATTLENET" then
+			error("AddOn_Chomp.ReportGUID(): target uses BattleNet messages and cannot be reported", 2)
+		elseif reason == "UNLOGGED" then
+			error("AddOn_Chomp.ReportGUID(): target uses unlogged messages and cannot be reported", 2)
+		end
 	end
 	return false, reason
 end
