@@ -1,5 +1,6 @@
 --[[
 	© Justin Snelgrove
+	© Renaud Parize
 
 	Permission to use, copy, modify, and distribute this software for any
 	purpose with or without fee is hereby granted, provided that the above
@@ -701,10 +702,12 @@ function AddOn_Chomp.CheckReportGUID(prefix, guid)
 	return false, "UNLOGGED"
 end
 
-function AddOn_Chomp.ReportGUID(prefix, guid)
+function AddOn_Chomp.ReportGUID(prefix, guid, customMessage)
 	local prefixData = Internal.Prefixes[prefix]
 	if type(prefix) ~= "string" then
 		error("AddOn_Chomp.ReportTarget(): prefix: expected string, got " .. type(prefix), 2)
+	elseif customMessage and type(customMessage) ~= "string" then
+		error("AddOn_Chomp.ReportGUID(): customMessage: expected string, got " .. type(customMessage), 2)
 	elseif type(guid) ~= "string" then
 		error("AddOn_Chomp.ReportTarget(): guid: expected string, got " .. type(guid), 2)
 	elseif not prefixData then
@@ -716,7 +719,7 @@ function AddOn_Chomp.ReportGUID(prefix, guid)
 	end
 	local canReport, reason = AddOn_Chomp.CheckReportGUID(prefix, guid)
 	if canReport then
-		C_ChatInfo.ReportPlayer(PLAYER_REPORT_TYPE_LANGUAGE, ReportLocation, "Objectionable content in logged addon messages.")
+		C_ChatInfo.ReportPlayer(PLAYER_REPORT_TYPE_LANGUAGE, ReportLocation, customMessage or "Objectionable content in logged addon messages.")
 		return true, reason
 	end
 	return false, reason
