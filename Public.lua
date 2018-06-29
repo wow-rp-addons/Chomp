@@ -813,12 +813,6 @@ function AddOn_Chomp.ReportGUID(prefix, guid, customMessage)
 	if canReport then
 		C_ChatInfo.ReportPlayer(PLAYER_REPORT_TYPE_LANGUAGE, ReportLocation, customMessage or "Objectionable content in logged addon messages.")
 		return true, reason
-	else
-		if reason == "BATTLENET" then
-			error("AddOn_Chomp.ReportGUID(): target uses BattleNet messages and cannot be reported", 2)
-		elseif reason == "UNLOGGED" then
-			error("AddOn_Chomp.ReportGUID(): target uses unlogged messages and cannot be reported", 2)
-		end
 	end
 	return false, reason
 end
