@@ -433,6 +433,78 @@ function AddOn_Chomp.IsSending()
 	return Internal.isSending
 end
 
+local Serialize = {}
+
+Serialize["nil"] = function(input)
+	return "nil"
+end
+
+function Serialize.boolean(input)
+	return tostring(input)
+end
+
+function Serialize.number(input)
+	return tostring(input)
+end
+
+function Serialize.string(input)
+	return ("%q"):format(input)
+end
+
+function Serialize.table(input)
+	local t = {}
+	t[#t + 1] = "{"
+	for K, V in pairs(input) do
+		local typeK, typeV = type(K), type(V)
+		t[#t + 1] = "["
+		if not Serialize[typeK] then
+			error()
+		end
+		t[#t + 1] = Serialize[typeK](K)
+		t[#t + 1] = "]="
+		if not Serialize[typeV] then
+			error()
+		end
+		t[#t + 1] = Serialize[typeV](V)
+		t[#t + 1] = ","
+	end
+	t[#t + 1] = "}"
+	return table.concat(t)
+end
+
+function AddOn_Chomp.Serialize(object)
+	local objectType = type(object)
+	if not Serialize[type(object)] then
+		error("AddOn_Chomp.Serialize(): object: expected serializable type, got " .. objectType, 2)
+	end
+	local success, serialized = pcall(Serialize[objectType], object)
+	if not success then
+		error("AddOn_Chomp.Serialize(): object: could not be serialized due to finding unserializable type", 2)
+	end
+	return serialized
+end
+
+local EMPTY_ENV = setmetatable({}, {
+	__newindex = function() return end,
+	__metatable = false,
+})
+
+function AddOn_Chomp.Deserialize(text)
+	if type(text) ~= "string" then
+		error("AddOn_Chomp.Deserialize(): text: expected string, got " .. objectType, 2)
+	end
+	local success, func = pcall(loadstring, ("return %s"):format(text))
+	if not success then
+		error("AddOn_Chomp.Deserialize(): text: could not be loaded via loadstring", 2)
+	end
+	setfenv(func, EMPTY_ENV)
+	local retSuccess, ret = pcall(func)
+	if not retSuccess then
+		error("AddOn_Chomp.Deserialize(): text: error while reading data", 2)
+	end
+	return ret
+end
+
 local function CharToQuotedPrintable(c)
 	return ("=%02X"):format(c:byte())
 end
@@ -537,7 +609,9 @@ function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, settings)
 		}
 	end
 	if settings.fullMsgOnly and not settings.needBuffer then
-		error("AddOn_Chomp.RegisterAddonPrefix(): settings.needBuffer: settings.fullMsgOnly requires settings.needBuffer to be true", 2)
+		error("AddOn_Chomp.RegisterAddonPrefix(): settings.fullMsgOnly: requires settings.needBuffer to be true", 2)
+	elseif settings.serialize and not settings.fullMsgOnly then
+		error("AddOn_Chomp.RegisterAddonPrefix(): settings.serialize: requires settings.fullMsgOnly to be true", 2)
 	end
 	local prefixData = Internal.Prefixes[prefix]
 	if not prefixData then
@@ -547,6 +621,7 @@ function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, settings)
 			Callbacks = {},
 			needBuffer = settings.needBuffer,
 			fullMsgOnly = settings.fullMsgOnly,
+			serialize = settings.serialize,
 			permitUnlogged = settings.permitUnlogged,
 			permitLogged = settings.permitLogged,
 			permitBattleNet = settings.permitBattleNet,
@@ -646,7 +721,7 @@ function AddOn_Chomp.SmartAddonMessage(prefix, text, kind, target, priority, que
 	local prefixData = Internal.Prefixes[prefix]
 	if type(prefix) ~= "string" then
 		error("AddOn_Chomp.SmartAddonMessage(): prefix: expected string, got " .. type(prefix), 2)
-	elseif type(text) ~= "string" then
+	elseif not prefixData.serialize and type(text) ~= "string" then
 		error("AddOn_Chomp.SmartAddonMessage(): text: expected string, got " .. type(text), 2)
 	elseif type(kind) ~= "string" then
 		error("AddOn_Chomp.SmartAddonMessage(): kind: expected string, got " .. type(kind), 2)
@@ -658,6 +733,8 @@ function AddOn_Chomp.SmartAddonMessage(prefix, text, kind, target, priority, que
 		error("AddOn_Chomp.SmartAddonMessage(): queue: expected string or nil, got " .. type(queue), 2)
 	elseif not prefixData then
 		error("AddOn_Chomp.SmartAddonMessage(): prefix: prefix has not been registered with Chomp", 2)
+	elseif prefixData.serialize then
+		text = AddOn_Chomp.Serialize(text)
 	end
 
 	if not IsLoggedIn() then

@@ -161,9 +161,15 @@ local function HandleMessageIn(prefix, text, channel, sender)
 				elseif runHandler and buffer[i] and (not prefixData.fullMsgOnly or i == msgTotal) then
 					-- This message is ready for processing.
 					if prefixData.fullMsgOnly then
-						handlerText = table.concat(buffer)
+						local handlerData = table.concat(buffer)
+						if prefixData.serialize then
+							local success, deserialized = pcall(AddOn_Chomp.Deserialize, handlerData)
+							if success then
+								handlerData = deserialized
+							end
+						end
 						for j, func in ipairs(prefixData.Callbacks) do
-							xpcall(func, geterrorhandler(), prefix, table.concat(buffer), channel, sender)
+							xpcall(func, geterrorhandler(), prefix, handlerData, channel, sender)
 						end
 					else
 						for j, func in ipairs(prefixData.Callbacks) do
