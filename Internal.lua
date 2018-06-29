@@ -106,6 +106,29 @@ if not Internal.ErrorCallbacks then
 	Internal.ErrorCallbacks = {}
 end
 
+Internal.BITS = {
+	SERIALIZE = 0x001,
+	UNUSEDA   = 0x002,
+	UNUSED9   = 0x004,
+	UNUSES8   = 0x008,
+	UNUSED7   = 0x010,
+	UNUSED6   = 0x020,
+	UNUSED5   = 0x040,
+	UNUSED4   = 0x080,
+	UNUSED3   = 0x100,
+	UNUSED2   = 0x200,
+	UNUSED1   = 0x400,
+	UNUSED0   = 0x800,
+}
+
+Internal.KNOWN_BITS = 0
+
+for purpose, bits in pairs(Internal.BITS) do
+	if not purpose:find("UNUSED", nil, true) then
+		Internal.KNOWN_BITS = bit.bor(Internal.KNOWN_BITS, bits)
+	end
+end
+
 --[[
 	HELPER FUNCTIONS
 ]]
@@ -124,74 +147,72 @@ local function HandleMessageIn(prefix, text, channel, sender)
 	if not prefixData then
 		return
 	end
-	
+
 	local method = channel:match("%:(%u+)$")
 	if (not method and not prefixData.permitUnlogged)
 		or (method == "BATTLENET" and not prefixData.permitBattleNet)
 		or (method == "LOGGED" and not prefixData.permitLogged)
 	then return end
-	if prefixData.needBuffer or method == "BATTLENET" then
-		local sessionID, msgID, msgTotal, userText = text:match("^(%x%x%x)(%x%x%x)(%x%x%x)(.*)$")
-		sessionID = tonumber(sessionID, 16) or -1
-		msgID = tonumber(msgID, 16) or 1
-		msgTotal = tonumber(msgTotal, 16) or 1
-		if userText then
-			text = userText
-		end
-		if msgTotal > 1 then
-			if not prefixData[sender] then
-				prefixData[sender] = {}
-			end
-			if not prefixData[sender][sessionID] then
-				prefixData[sender][sessionID] = {}
-			end
-			local buffer = prefixData[sender][sessionID]
-			buffer[msgID] = text
-			local callbacks = prefixData.Callbacks
-			local runHandler = true
-			for i = 1, msgTotal do
-				if buffer[i] == nil then
-					-- msgTotal has changed, either by virtue of being the first
-					-- message or by correction in other side's calculations.
-					buffer[i] = true
-					runHandler = false
-				elseif buffer[i] == true then
-					-- Need to hold this message until we're ready to process.
-					runHandler = false
-				elseif runHandler and buffer[i] and (not prefixData.fullMsgOnly or i == msgTotal) then
-					-- This message is ready for processing.
-					if prefixData.fullMsgOnly then
-						local handlerData = table.concat(buffer)
-						if prefixData.serialize then
-							local success, deserialized = pcall(AddOn_Chomp.Deserialize, handlerData)
-							if success then
-								handlerData = deserialized
-							end
-						end
-						for j, func in ipairs(prefixData.Callbacks) do
-							xpcall(func, geterrorhandler(), prefix, handlerData, channel, sender)
-						end
-					else
-						for j, func in ipairs(prefixData.Callbacks) do
-							-- Nils are reserved for Blizzard arguments.
-							xpcall(func, geterrorhandler(), prefix, buffer[i], channel, sender, nil, nil, nil, nil, nil, nil, nil, nil, sessionID, msgID, msgTotal)
-						end
-					end
-					buffer[i] = false
-					if i == msgTotal then
-						-- Tidy up the garbage when we've processed the last
-						-- pending message.
-						prefixData[sender][sessionID] = nil
+
+	local bitField, sessionID, msgID, msgTotal, userText = text:match("^(%x%x%x)(%x%x%x)(%x%x%x)(%x%x%x)(.*)$")
+	bitField = tonumber(bitField, 16) or 0
+	sessionID = tonumber(sessionID, 16) or -1
+	msgID = tonumber(msgID, 16) or 1
+	msgTotal = tonumber(msgTotal, 16) or 1
+	if userText then
+		text = userText
+	end
+
+	if bit.bor(bitField, Internal.KNOWN_BITS) ~= Internal.KNOWN_BITS then
+		-- Uh, found an unknown bit. What do?
+		-- TODO: Actually do something about it.
+	end
+
+	local deserialize = bit.band(bitField, Internal.BITS.SERIALIZE) == Internal.BITS.SERIALIZE
+	local fullMsgOnly = prefixData.fullMsgOnly or deserialize
+
+	if not prefixData[sender] then
+		prefixData[sender] = {}
+	end
+	if not prefixData[sender][sessionID] then
+		prefixData[sender][sessionID] = {}
+	end
+	local buffer = prefixData[sender][sessionID]
+	buffer[msgID] = text
+
+	local runHandler = true
+	for i = 1, msgTotal do
+		if buffer[i] == nil then
+			-- msgTotal has changed, either by virtue of being the first
+			-- message or by correction in other side's calculations.
+			buffer[i] = true
+			runHandler = false
+		elseif buffer[i] == true then
+			-- Need to hold this message until we're ready to process.
+			runHandler = false
+		elseif runHandler and buffer[i] and (not fullMsgOnly or i == msgTotal) then
+			local handlerData = buffer[i]
+			-- This message is ready for processing.
+			if fullMsgOnly then
+				handlerData = table.concat(buffer)
+				if deserialize then
+					local success, original = pcall(AddOn_Chomp.Deserialize, handlerData)
+					if success then
+						-- TODO: Handle failure some other way?
+						handlerData = original
 					end
 				end
 			end
-			-- If we have a multi-message sequence, end here.
-			return
+			for j, func in ipairs(prefixData.Callbacks) do
+				xpcall(func, geterrorhandler(), prefix, handlerData, channel, sender, nil, nil, nil, nil, nil, nil, nil, nil, sessionID, msgID, msgTotal)
+			end
+			buffer[i] = false
+			if i == msgTotal then
+				-- Tidy up the garbage when we've processed the last
+				-- pending message.
+				prefixData[sender][sessionID] = nil
+			end
 		end
-	end
-
-	for i, func in ipairs(prefixData.Callbacks) do
-		xpcall(func, geterrorhandler(), prefix, text, channel, sender)
 	end
 end
 

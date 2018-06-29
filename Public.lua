@@ -590,7 +590,13 @@ function AddOn_Chomp.SafeSubString(text, first, last, textLen)
 	return (text:sub(first, last - offset)), offset
 end
 
-function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, settings)
+local DEFAULT_SETTINGS = {
+	permitUnlogged = true,
+	permitLogged = true,
+	permitBattleNet = true,
+	fullMsgOnly = true,
+}
+function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, prefixSettings)
 	local prefixType = type(prefix)
 	if prefixType ~= "string" then
 		error("AddOn_Chomp.RegisterAddonPrefix(): prefix: expected string, got " .. prefixType, 2)
@@ -598,20 +604,11 @@ function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, settings)
 		error("AddOn_Chomp.RegisterAddonPrefix(): prefix: length cannot exceed 16 bytes", 2)
 	elseif type(callback) ~= "function" then
 		error("AddOn_Chomp.RegisterAddonPrefix(): callback: expected function, got " .. type(callback), 2)
-	elseif settings and type(settings) ~= "table" then
-		error("AddOn_Chomp.RegisterAddonPrefix(): settings: expected table or nil, got " .. type(settings), 2)
+	elseif prefixSettings and type(prefixSettings) ~= "table" then
+		error("AddOn_Chomp.RegisterAddonPrefix(): prefixSettings: expected table or nil, got " .. type(prefixSettings), 2)
 	end
-	if not settings then
-		settings = {
-			permitUnlogged = true,
-			permitLogged = true,
-			permitBattleNet = true,
-		}
-	end
-	if settings.fullMsgOnly and not settings.needBuffer then
-		error("AddOn_Chomp.RegisterAddonPrefix(): settings.fullMsgOnly: requires settings.needBuffer to be true", 2)
-	elseif settings.serialize and not settings.fullMsgOnly then
-		error("AddOn_Chomp.RegisterAddonPrefix(): settings.serialize: requires settings.fullMsgOnly to be true", 2)
+	if not prefixSettings then
+		prefixSettings = DEFAULT_SETTINGS
 	end
 	local prefixData = Internal.Prefixes[prefix]
 	if not prefixData then
@@ -619,19 +616,17 @@ function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, settings)
 			BattleNet = {},
 			Logged = {},
 			Callbacks = {},
-			needBuffer = settings.needBuffer,
-			fullMsgOnly = settings.fullMsgOnly,
-			serialize = settings.serialize,
-			permitUnlogged = settings.permitUnlogged,
-			permitLogged = settings.permitLogged,
-			permitBattleNet = settings.permitBattleNet,
+			fullMsgOnly = prefixSettings.fullMsgOnly,
+			permitUnlogged = prefixSettings.permitUnlogged,
+			permitLogged = prefixSettings.permitLogged,
+			permitBattleNet = prefixSettings.permitBattleNet,
 		}
 		Internal.Prefixes[prefix] = prefixData
 		if not C_ChatInfo.IsAddonMessagePrefixRegistered(prefix) then
 			C_ChatInfo.RegisterAddonMessagePrefix(prefix)
 		end
 	else
-		error("AddOn_Chomp.RegisterAddonPrefix(): prefix handler already registered, Chomp currently supports one handler per prefix")
+		error("AddOn_Chomp.RegisterAddonPrefix(): prefix handler already registered, Chomp currently supports only one handler per prefix")
 	end
 	prefixData.Callbacks[#prefixData.Callbacks + 1] = callback
 end
@@ -662,83 +657,79 @@ local function BNGetIDGameAccount(name)
 end
 
 local nextSessionID = math.random(0, 4095)
-
-local function SplitAndSend(needEncode, needBuffer, sendFunc, maxSize, prefix, text, ...)
-	if needEncode then
-		text = AddOn_Chomp.EncodeQuotedPrintable(text)
-	end
+local function SplitAndSend(sendFunc, maxSize, bitField, prefix, text, ...)
 	local textLen = #text
-	if needBuffer then
-		maxSize = maxSize - 12
-	end
-	local sessionID, msgID, totalMsg
+	-- Subtract Chomp metadata from maximum size.
+	maxSize = maxSize - 12
 	local totalOffset = 0
-	if needBuffer then
-		msgID = 0
-		totalMsg = math.ceil(textLen / maxSize)
-		sessionID = nextSessionID
-		nextSessionID = (nextSessionID + 1) % 4096
-	end
+	local msgID = 0
+	local totalMsg = math.ceil(textLen / maxSize)
+	local sessionID = nextSessionID
+	nextSessionID = (nextSessionID + 1) % 4096
 	local position = 1
 	while position <= textLen do
-		-- Only *need* to do a safe split for encoded channels, but doing so
+		-- Only *need* to do a safe substring for encoded channels, but doing so
 		-- always shouldn't hurt.
 		local msgText, offset = AddOn_Chomp.SafeSubString(text, position, position + maxSize - 1, textLen)
-		if needBuffer then
-			if offset > 0 then
-				-- Update total offset and total message number if needed.
-				totalOffset = totalOffset + offset
-				totalMsg = math.ceil((textLen + totalOffset) / maxSize)
-			end
-			msgID = msgID + 1
-			msgText = ("%03X%03X%03X%s"):format(sessionID, msgID, totalMsg, msgText)
+		if offset > 0 then
+			-- Update total offset and total message number if needed.
+			totalOffset = totalOffset + offset
+			totalMsg = math.ceil((textLen + totalOffset) / maxSize)
 		end
+		msgID = msgID + 1
+		msgText = ("%03X%03X%03X%03X%s"):format(bitField, sessionID, msgID, totalMsg, msgText)
 		sendFunc(prefix, msgText, ...)
 		position = position + maxSize - offset
 	end
 end
 
-local function ToInGame(prefix, text, kind, target, priority, queue)
-	local prefixData = Internal.Prefixes[prefix]
-	return SplitAndSend(false, prefixData.needBuffer, AddOn_Chomp.SendAddonMessage, 255, prefix, text, kind, target, priority, queue)
+local function ToInGame(bitField, prefix, text, kind, target, priority, queue)
+	return SplitAndSend(AddOn_Chomp.SendAddonMessage, 255, bitField, prefix, text, kind, target, priority, queue)
 end
 
-local function ToInGameLogged(prefix, text, kind, target, priority, queue)
-	local prefixData = Internal.Prefixes[prefix]
-	return SplitAndSend(true, prefixData.needBuffer, AddOn_Chomp.SendAddonMessageLogged, 255, prefix, text, kind, target, priority, queue)
+local function ToInGameLogged(bitField, prefix, text, kind, target, priority, queue)
+	return SplitAndSend(AddOn_Chomp.SendAddonMessageLogged, 255, bitField, prefix, text, kind, target, priority, queue)
 end
 
 local function BNSendGameDataRearrange(prefix, text, bnetIDGameAccount, ...)
 	return AddOn_Chomp.BNSendGameData(bnetIDGameAccount, prefix, text, ...)
 end
 
-local function ToBattleNet(prefix, text, kind, bnetIDGameAccount, priority)
-	--local prefixData = Internal.Prefixes[prefix]
-	return SplitAndSend(false, true, BNSendGameDataRearrange, 4078, prefix, text, bnetIDGameAccount, priority, queue)
+local function ToBattleNet(bitField, prefix, text, kind, bnetIDGameAccount, priority)
+	return SplitAndSend(BNSendGameDataRearrange, 4078, bitField, prefix, text, bnetIDGameAccount, priority, queue)
 end
 
-function AddOn_Chomp.SmartAddonMessage(prefix, text, kind, target, priority, queue)
+local DEFAULT_OPTIONS = {}
+function AddOn_Chomp.SmartAddonMessage(prefix, text, kind, target, messageOptions)
 	local prefixData = Internal.Prefixes[prefix]
-	if type(prefix) ~= "string" then
-		error("AddOn_Chomp.SmartAddonMessage(): prefix: expected string, got " .. type(prefix), 2)
-	elseif not prefixData.serialize and type(text) ~= "string" then
-		error("AddOn_Chomp.SmartAddonMessage(): text: expected string, got " .. type(text), 2)
+	if not prefixData then
+		error("AddOn_Chomp.SmartAddonMessage(): prefix: prefix has not been registered with Chomp", 2)
 	elseif type(kind) ~= "string" then
 		error("AddOn_Chomp.SmartAddonMessage(): kind: expected string, got " .. type(kind), 2)
 	elseif type(target) ~= "string" then
 		error("AddOn_Chomp.SmartAddonMessage(): target: expected string, got " .. type(target), 2)
-	elseif priority and not PRIORITIES_HASH[priority] then
-		error("AddOn_Chomp.SmartAddonMessage(): priority: expected \"HIGH\", \"MEDIUM\", or \"LOW\", got " .. tostring(priority), 2)
-	elseif queue and type(queue) ~= "string" then
-		error("AddOn_Chomp.SmartAddonMessage(): queue: expected string or nil, got " .. type(queue), 2)
-	elseif not prefixData then
-		error("AddOn_Chomp.SmartAddonMessage(): prefix: prefix has not been registered with Chomp", 2)
-	elseif prefixData.serialize then
-		text = AddOn_Chomp.Serialize(text)
+	end
+
+	if not messageOptions then
+		messageOptions = DEFAULT_OPTIONS
+	end
+
+	if not messageOptions.serialize and type(text) ~= "string" then
+		error("AddOn_Chomp.SmartAddonMessage(): text: expected string or serialization, got " .. type(text), 2)
+	elseif messageOptions.priority and not PRIORITIES_HASH[messageOptions.priority] then
+		error("AddOn_Chomp.SmartAddonMessage(): messageOptions.priority: expected \"HIGH\", \"MEDIUM\", or \"LOW\", got " .. tostring(priority), 2)
+	elseif messageOptions.queue and type(messageOptions.queue) ~= "string" then
+		error("AddOn_Chomp.SmartAddonMessage(): messageOptions.queue: expected string or nil, got " .. type(queue), 2)
 	end
 
 	if not IsLoggedIn() then
-		QueueMessageOut("SmartAddonMessage", prefix, text, kind, target, priority, queue)
+		QueueMessageOut("SmartAddonMessage", prefix, text, kind, target, messageOptions)
+	end
+
+	local bitField = 0x000
+	if messageOptions.serialize then
+		bitField = bit.bor(bitField, Internal.BITS.SERIALIZE)
+		text = AddOn_Chomp.Serialize(text)
 	end
 
 	target = AddOn_Chomp.NameMergedRealm(target)
@@ -748,7 +739,7 @@ function AddOn_Chomp.SmartAddonMessage(prefix, text, kind, target, priority, que
 
 	if prefixData.permitLogged then
 		if loggedCapable ~= false then
-			ToInGameLogged(prefix, text, kind, target, priority, queue)
+			ToInGameLogged(bitField, prefix, AddOn_Chomp.EncodeQuotedPrintable(text), kind, target, messageOptions.priority, messageOptions.queue)
 			sentLogged = true
 			if loggedCapable == true then
 				return sentBnet, sentLogged, sentInGame
@@ -758,7 +749,7 @@ function AddOn_Chomp.SmartAddonMessage(prefix, text, kind, target, priority, que
 	if prefixData.permitBattleNet and kind == "WHISPER" then
 		local bnetIDGameAccount = BNGetIDGameAccount(target)
 		if bnetIDGameAccount and bnetCapable ~= false then
-			ToBattleNet(prefix, text, kind, bnetIDGameAccount, priority, queue)
+			ToBattleNet(bitField, prefix, text, kind, bnetIDGameAccount, messageOptions.priority, messageOptions.queue)
 			sentBnet = true
 			if bnetCapable == true then
 				return sentBnet, sentLogged, sentInGame
@@ -766,7 +757,7 @@ function AddOn_Chomp.SmartAddonMessage(prefix, text, kind, target, priority, que
 		end
 	end
 	if prefixData.permitUnlogged then
-		ToInGame(prefix, text, kind, target, priority, queue)
+		ToInGame(bitField, prefix, text, kind, target, messageOptions.priority, messageOptions.queue)
 		sentInGame = true
 		return sentBnet, sentLogged, sentInGame
 	end

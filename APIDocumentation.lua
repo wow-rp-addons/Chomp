@@ -202,7 +202,7 @@ local ChompAPI =
 			{
 				{ Name = "prefix", Type = "string", Nilable = false, Documentation = { "Maximum length of 16 bytes." } },
 				{ Name = "callback", Type = "function", Nilable = false, Documentation = { "Arguments passed are identical to CHAT_MSG_ADDON event." } },
-				{ Name = "settings", Type = "table", Nilable = true, Documentation = { "Accepts boolean keys of: permitUnlogged, permitLogged, permitBattleNet, needBuffer, fullMsgOnly, serialize." } },
+				{ Name = "prefixSettings", Type = "table", Nilable = true, Documentation = { "Accepts boolean keys of: permitUnlogged, permitLogged, permitBattleNet, fullMsgOnly." } },
 			},
 		},
 		{
@@ -214,8 +214,7 @@ local ChompAPI =
 				{ Name = "prefix", Type = "string", Nilable = false, Documentation = { "Maximum length of 16 bytes." } },
 				{ Name = "text", Type = "string or any", Nilable = false, Documentation = { "String required unless the prefix has been set to require serialization.", "The outgoing text will be split (based on selected method's maximum message size, encoded (based on selected method's permitted byte sequences), and otherwise transformed as necessary prior to sending." } },
 				{ Name = "target", Type = "string", Nilable = false },
-				{ Name = "priority", Type = "string", Nilable = true, Documentation = { "Must be one of \"HIGH\", \"MEDIUM\", or \"LOW\"." } },
-				{ Name = "queue", Type = "string", Nilable = true },
+				{ Name = "messageOptions", Type = "table", Nilable = true, Documentation = { "This table should be stored and reused if you send multiple messages with the same options. However, modifying the referenced table should be avoided after first passing it to Chomp.", "Accepts string keys of: priority, queue.", "Accepts boolean keys of: serialize." }}
 			},
 
 			Returns = 
