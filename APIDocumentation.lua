@@ -112,33 +112,40 @@ local ChompAPI =
 			},
 		},
 		{
-			Name = "RegisterAddonPrefix",
+			Name = "IsSending",
 			Type = "Function",
 
-			Arguments =
+			Returns = 
 			{
-				{ Name = "prefix", Type = "string or table", Nilable = false, Documentation = { "If table is passed, [0], [1], [2], and [3] indicies must be present. [0] is used for messages that do not need splitting. [1] is used for first of split messages, [2] for middle of split messages, and [3] for last of split messages.", "Maximum length of 16 bytes." } },
-				{ Name = "callback", Type = "function", Nilable = true, Documentation = { "Arguments passed are identical to CHAT_MSG_ADDON event." } },
+				{ Name = "isSending", Type = "boolean", Nilable = false, Documentation = { "Returns true if Chomp is in the process of sending a message." } },
 			},
 		},
 		{
-			Name = "SmartAddonWhisper",
+			Name = "Serialize",
 			Type = "Function",
 
 			Arguments =
 			{
-				{ Name = "prefix", Type = "string or table", Nilable = false, Documentation = { "If table is passed, reference must be identical to table originally passed to AddOn_Chomp.RegisterAddonPrefix().", "Maximum length of 16 bytes." } },
-				{ Name = "text", Type = "string", Nilable = false, Documentation = { "The outgoing text will be split (based on selected method's maximum message size, encoded (based on selected method's permitted byte sequences), and otherwise transformed as necessary prior to sending." } },
-				{ Name = "target", Type = "string", Nilable = false },
-				{ Name = "priority", Type = "string", Nilable = true, Documentation = { "Must be one of \"HIGH\", \"MEDIUM\", or \"LOW\"." } },
-				{ Name = "queue", Type = "string", Nilable = true },
+				{ Name = "object", Type = "boolean, number, string, or table", Nilable = true },
 			},
 
 			Returns = 
 			{
-				{ Name = "sentBnet", Type = "bool", Nilable = false },
-				{ Name = "sentLogged", Type = "bool", Nilable = false },
-				{ Name = "sentInGame", Type = "bool", Nilable = false },
+				{ Name = "serializedText", Type = "string", Nilable = false },
+			},
+		},
+		{
+			Name = "Deserialize",
+			Type = "Function",
+
+			Arguments =
+			{
+				{ Name = "serializedText", Type = "string", Nilable = false },
+			},
+
+			Returns = 
+			{
+				{ Name = "object", Type = "boolean, number, string, or table", Nilable = true },
 			},
 		},
 		{
@@ -169,20 +176,124 @@ local ChompAPI =
 				{ Name = "decodedText", Type = "string", Nilable = false },
 			},
 		},
-		-- TODO: Error callbacks, target compatibility, report target.
 		{
-			Name = "GetBPS",
+			Name = "SafeSubString",
 			Type = "Function",
 
 			Arguments =
 			{
-				{ Name = "pool", Type = "string", Nilable = false, Documentation = { "Must be one of \"InGame\" or \"BattleNet\"." } },
+				{ Name = "text", Type = "string", Nilable = false },
+				{ Name = "first", Type = "number", Nilable = false },
+				{ Name = "last", Type = "number", Nilable = false },
+				{ Name = "textLen", Type = "number", Nilable = true, Documentation = { "Optional, saves a bit of computation time if chopping a single string multiple times." } },
 			},
 
 			Returns = 
 			{
-				{ Name = "bps", Type = "number", Nilable = false, Documentation = { "Maximum sustained bytes per second allowed for the requested pool." } },
-				{ Name = "burst", Type = "number", Nilable = false, Documentation = { "Maximum instantaneous burst bytes allowed for the requested pool." } },
+				{ Name = "subString", Type = "string", Nilable = false, Documentation = { "A substring that is equal to or less than the requested substring, never splitting UTF-8 byte sequences and quoted-printable byte sequences." } },
+				{ Name = "offset", Type = "number", Nilable = false, Documentation = { "The number of characters shorter the substring is, compared to the requested.", "Always positive." } },
+			},
+		},
+		{
+			Name = "RegisterAddonPrefix",
+			Type = "Function",
+
+			Arguments =
+			{
+				{ Name = "prefix", Type = "string", Nilable = false, Documentation = { "Maximum length of 16 bytes." } },
+				{ Name = "callback", Type = "function", Nilable = false, Documentation = { "Arguments passed are identical to CHAT_MSG_ADDON event." } },
+				{ Name = "settings", Type = "table", Nilable = true, Documentation = { "Accepts boolean keys of: permitUnlogged, permitLogged, permitBattleNet, needBuffer, fullMsgOnly, serialize." } },
+			},
+		},
+		{
+			Name = "SmartAddonMessage",
+			Type = "Function",
+
+			Arguments =
+			{
+				{ Name = "prefix", Type = "string", Nilable = false, Documentation = { "Maximum length of 16 bytes." } },
+				{ Name = "text", Type = "string or any", Nilable = false, Documentation = { "String required unless the prefix has been set to require serialization.", "The outgoing text will be split (based on selected method's maximum message size, encoded (based on selected method's permitted byte sequences), and otherwise transformed as necessary prior to sending." } },
+				{ Name = "target", Type = "string", Nilable = false },
+				{ Name = "priority", Type = "string", Nilable = true, Documentation = { "Must be one of \"HIGH\", \"MEDIUM\", or \"LOW\"." } },
+				{ Name = "queue", Type = "string", Nilable = true },
+			},
+
+			Returns = 
+			{
+				{ Name = "sentBnet", Type = "bool", Nilable = false },
+				{ Name = "sentLogged", Type = "bool", Nilable = false },
+				{ Name = "sentInGame", Type = "bool", Nilable = false },
+			},
+		},
+		{
+			Name = "CheckReportGUID",
+			Type = "Function",
+
+			Arguments =
+			{
+				{ Name = "prefix", Type = "string", Nilable = false, Documentation = { "Maximum length of 16 bytes." } },
+				{ Name = "guid", Type = "string", Nilable = false, Documentation = { "GUID must be used due to Blizzard constraints on reporting." } },
+			},
+
+			Returns = 
+			{
+				{ Name = "canReport", Type = "boolean", Nilable = false },
+				{ Name = "reason", Type = "string", Nilable = false, Documentation = { "One of UNKOWN, BATTLENET, or UNLOGGED if canReport is false; always LOGGED if canReport is true." } },
+			},
+		},
+		{
+			Name = "ReportGUID",
+			Type = "Function",
+
+			Arguments =
+			{
+				{ Name = "prefix", Type = "string", Nilable = false, Documentation = { "Maximum length of 16 bytes." } },
+				{ Name = "guid", Type = "string", Nilable = false, Documentation = { "GUID must be used due to Blizzard constraints on reporting." } },
+				{ Name = "customMessage", Type = "string", Nilable = true, Documentation = { "Custom message to pass to Blizzard GMs, regarding reported content." } },
+			},
+
+			Returns = 
+			{
+				{ Name = "didReport", Type = "boolean", Nilable = false },
+				{ Name = "reason", Type = "string", Nilable = false, Documentation = { "UNKOWN, BATTLENET, or UNLOGGED if didReport is false; always LOGGED if didReport is true." } },
+			},
+		},
+		{
+			Name = "RegisterErrorCallback",
+			Type = "Function",
+
+			Arguments =
+			{
+				{ Name = "callback", Type = "function", Nilable = false },
+			},
+
+			Returns = 
+			{
+				{ Name = "didRegister", Type = "boolean", Nilable = false },
+			},
+		},
+		{
+			Name = "UnregisterErrorCallback",
+			Type = "Function",
+
+			Arguments =
+			{
+				{ Name = "callback", Type = "function", Nilable = false },
+			},
+
+			Returns = 
+			{
+				{ Name = "didUnregister", Type = "boolean", Nilable = false },
+			},
+		},
+		{
+			Name = "GetBPS",
+			Type = "Function",
+
+			Returns = 
+			{
+				{ Name = "bps", Type = "number", Nilable = false, Documentation = { "Maximum sustained bytes per second allowed." } },
+				{ Name = "burst", Type = "number", Nilable = false, Documentation = { "Maximum instantaneous burst bytes allowed." } },
 			},
 		},
 		{
@@ -191,9 +302,8 @@ local ChompAPI =
 
 			Arguments =
 			{
-				{ Name = "pool", Type = "string", Nilable = false, Documentation = { "Must be one of \"InGame\" or \"BattleNet\"." } },
-				{ Name = "bps", Type = "number", Nilable = false, Documentation = { "Maximum sustained bytes per second allowed for the requested pool.", "WARNING: This is not constrained and improper settings can cause failures or disconnections." } },
-				{ Name = "burst", Type = "number", Nilable = false, Documentation = { "Maximum instantaneous burst bytes allowed for the requested pool.", "WARNING: This is not constrained and improper settings can cause failures or disconnections." } },
+				{ Name = "bps", Type = "number", Nilable = false, Documentation = { "Maximum sustained bytes per second allowed.", "WARNING: This is not constrained and improper settings can cause failures or disconnections." } },
+				{ Name = "burst", Type = "number", Nilable = false, Documentation = { "Maximum instantaneous burst bytes allowed.", "WARNING: This is not constrained and improper settings can cause failures or disconnections." } },
 			},
 		},
 		{
@@ -209,7 +319,6 @@ local ChompAPI =
 	Events = 
 	{
 	},
-	-- TODO: Prefix table?
 	Tables = 
 	{
 	},
