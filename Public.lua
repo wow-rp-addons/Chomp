@@ -631,7 +631,7 @@ function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, settings)
 			C_ChatInfo.RegisterAddonMessagePrefix(prefix)
 		end
 	else
-		-- TODO: What if it's already registered?
+		error("AddOn_Chomp.RegisterAddonPrefix(): prefix handler already registered, Chomp currently supports one handler per prefix")
 	end
 	prefixData.Callbacks[#prefixData.Callbacks + 1] = callback
 end
