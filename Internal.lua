@@ -203,8 +203,10 @@ local function HandleMessageIn(prefix, text, channel, sender)
 					end
 				end
 			end
-			for j, func in ipairs(prefixData.Callbacks) do
-				xpcall(func, geterrorhandler(), prefix, handlerData, channel, sender, nil, nil, nil, nil, nil, nil, nil, nil, sessionID, msgID, msgTotal)
+			if prefixData.validTypes[type(handlerData)] then
+				for j, func in ipairs(prefixData.Callbacks) do
+					xpcall(func, geterrorhandler(), prefix, handlerData, channel, sender, nil, nil, nil, nil, nil, nil, nil, nil, sessionID, msgID, msgTotal)
+				end
 			end
 			buffer[i] = false
 			if i == msgTotal then

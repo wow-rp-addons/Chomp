@@ -597,6 +597,9 @@ local DEFAULT_SETTINGS = {
 	permitLogged = true,
 	permitBattleNet = true,
 	fullMsgOnly = true,
+	validTypes = {
+		["string"] = true,
+	},
 }
 function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, prefixSettings)
 	local prefixType = type(prefix)
@@ -612,6 +615,9 @@ function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, prefixSettings)
 	if not prefixSettings then
 		prefixSettings = DEFAULT_SETTINGS
 	end
+	if prefixSettings.validTypes and type(prefixSettings.validTypes) ~= "table" then
+		error("AddOn_Chomp.RegisterAddonPrefix(): prefixSettings.validTypes: expected table or nil, got " .. type(prefixSettings.validTypes), 2)
+	end
 	local prefixData = Internal.Prefixes[prefix]
 	if not prefixData then
 		prefixData = {
@@ -623,6 +629,11 @@ function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, prefixSettings)
 			permitLogged = prefixSettings.permitLogged,
 			permitBattleNet = prefixSettings.permitBattleNet,
 		}
+		local validTypes = prefixSettings.validTypes or DEFAULT_SETTINGS.validTypes
+		prefixData.validTypes = {}
+		for dataType, isValid in pairs(validTypes) do
+			prefixData.validTypes[dataType] = isValid
+		end
 		Internal.Prefixes[prefix] = prefixData
 		if not C_ChatInfo.IsAddonMessagePrefixRegistered(prefix) then
 			C_ChatInfo.RegisterAddonMessagePrefix(prefix)
