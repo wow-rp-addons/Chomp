@@ -458,12 +458,12 @@ function Serialize.table(input)
 		local typeK, typeV = type(K), type(V)
 		t[#t + 1] = "["
 		if not Serialize[typeK] then
-			error()
+			error("invalid type")
 		end
 		t[#t + 1] = Serialize[typeK](K)
 		t[#t + 1] = "]="
 		if not Serialize[typeV] then
-			error()
+			error("invalid type")
 		end
 		t[#t + 1] = Serialize[typeV](V)
 		t[#t + 1] = ","
@@ -501,6 +501,8 @@ function AddOn_Chomp.Deserialize(text)
 	local retSuccess, ret = pcall(func)
 	if not retSuccess then
 		error("AddOn_Chomp.Deserialize(): text: error while reading data", 2)
+	elseif not Serialize[type(ret)] then
+		error("AddOn_Chomp.Deserialize(): text: deserialized to invalid type: " .. type(ret), 2)
 	end
 	return ret
 end
