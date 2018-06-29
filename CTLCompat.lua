@@ -38,7 +38,7 @@ local Internal = __chomp_internal
 -- to happen if someone decides to LoadOnDemand a newer copy of ChatThrottleLib,
 -- but that will hopefully be vanishingly rare.
 
-local CTL_VERSION = 23
+local CTL_VERSION = 24
 
 local PRIORITY_FROM_CTL = { BULK = "LOW", NORMAL = "MEDIUM", ALERT = "HIGH" }
 
