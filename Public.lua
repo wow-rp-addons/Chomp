@@ -593,7 +593,6 @@ function AddOn_Chomp.SafeSubString(text, first, last, textLen)
 end
 
 local DEFAULT_SETTINGS = {
-	permitUnlogged = true,
 	permitLogged = true,
 	permitBattleNet = true,
 	fullMsgOnly = true,
@@ -621,8 +620,6 @@ function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, prefixSettings)
 	local prefixData = Internal.Prefixes[prefix]
 	if not prefixData then
 		prefixData = {
-			BattleNet = {},
-			Logged = {},
 			Callbacks = {},
 			fullMsgOnly = prefixSettings.fullMsgOnly,
 			permitUnlogged = prefixSettings.permitUnlogged,
@@ -660,9 +657,10 @@ local function BNGetIDGameAccount(name)
 		for j = 1, BNGetNumFriendGameAccounts(i) do
 			local active, characterName, client, realmName, realmID, faction, race, class, blank, zoneName, level, gameText, broadcastText, broadcastTime, isConnected, bnetIDGameAccount = BNGetFriendGameAccountInfo(i, j)
 			if isConnected and client == BNET_CLIENT_WOW then
-				if not realmName or realmName == "" then
+				local realm = realmName and realmName ~= "" and (realmName:gsub("%s*%-*", "")) or nil
+				if not realm then
 					return nil
-				elseif name == AddOn_Chomp.NameMergedRealm(characterName, realmName) then
+				elseif (not Internal.SameRealm[realm] or faction ~= UnitFactionGroup("player")) and name == AddOn_Chomp.NameMergedRealm(characterName, realm) then
 					return bnetIDGameAccount
 				end
 			end
@@ -751,30 +749,24 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 	end
 
 	target = AddOn_Chomp.NameMergedRealm(target)
-	local bnetCapable = prefixData.BattleNet[target]
-	local loggedCapable = prefixData.Logged[target]
 	local sentBnet, sentLogged, sentInGame = false, false, false
 
-	if prefixData.permitLogged then
-		if loggedCapable ~= false then
-			ToInGameLogged(bitField, prefix, AddOn_Chomp.EncodeQuotedPrintable(data), kind, target, messageOptions.priority, messageOptions.queue)
-			sentLogged = true
-			if loggedCapable == true then
-				return sentBnet, sentLogged, sentInGame
-			end
-		end
-	end
-	if prefixData.permitBattleNet and kind == "WHISPER" then
+	if (not messageOptions.forceMethod or messageOptions.forceMethod == "BATTLENET") and prefixData.permitBattleNet and kind == "WHISPER" then
+		-- BNGetIDGameAccount() only returns an ID for crossfaction and
+		-- crossrealm targets.
 		local bnetIDGameAccount = BNGetIDGameAccount(target)
-		if bnetIDGameAccount and bnetCapable ~= false then
+		if bnetIDGameAccount then
 			ToBattleNet(bitField, prefix, data, kind, bnetIDGameAccount, messageOptions.priority, messageOptions.queue)
 			sentBnet = true
-			if bnetCapable == true then
-				return sentBnet, sentLogged, sentInGame
-			end
+			return sentBnet, sentLogged, sentInGame
 		end
 	end
-	if prefixData.permitUnlogged then
+	if (not messageOptions.forceMethod or messageOptions.forceMethod == "LOGGED") and prefixData.permitLogged then
+		ToInGameLogged(bitField, prefix, AddOn_Chomp.EncodeQuotedPrintable(data), kind, target, messageOptions.priority, messageOptions.queue)
+		sentLogged = true
+		return sentBnet, sentLogged, sentInGame
+	end
+	if (not messageOptions.forceMethod or messageOptions.forceMethod == "UNLOGGED") and prefixData.permitUnlogged then
 		ToInGame(bitField, prefix, data, kind, target, messageOptions.priority, messageOptions.queue)
 		sentInGame = true
 		return sentBnet, sentLogged, sentInGame
@@ -797,12 +789,12 @@ function AddOn_Chomp.CheckReportGUID(prefix, guid)
 		return false, "UNKNOWN"
 	end
 	local target = AddOn_Chomp.NameMergedRealm(name, realm)
-	if prefixData.Logged[target] then
+	if prefixData.permitBattleNet and BNGetIDGameAccount(target) then
+		return false, "BATTLENET"
+	elseif prefixData.permitLogged then
 		ReportLocation:SetGUID(guid)
 		local isReportable = C_ChatInfo.CanReportPlayer(ReportLocation)
 		return isReportable, "LOGGED"
-	elseif prefixData.BattleNet[target] then
-		return false, "BATTLENET"
 	end
 	return false, "UNLOGGED"
 end

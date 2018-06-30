@@ -224,18 +224,12 @@ end
 
 local function ParseInGameMessageLogged(prefix, text, kind, sender)
 	local name = AddOn_Chomp.NameMergedRealm(sender)
-	if Internal.Prefixes[prefix] then
-		Internal.Prefixes[prefix].Logged[name] = true
-	end
 	return prefix, AddOn_Chomp.DecodeQuotedPrintable(text), ("%s:LOGGED"):format(kind), name
 end
 
 local function ParseBattleNetMessage(prefix, text, kind, bnetIDGameAccount)
 	local active, characterName, client, realmName = BNGetGameAccountInfo(bnetIDGameAccount)
 	local name = AddOn_Chomp.NameMergedRealm(characterName, realmName)
-	if Internal.Prefixes[prefix] then
-		Internal.Prefixes[prefix].BattleNet[name] = true
-	end
 	return prefix, text, ("%s:BATTLENET"):format(kind), name
 end
 
@@ -442,6 +436,11 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 		ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", MessageEventFilter_SYSTEM)
 		hooksecurefunc("RestartGx", HookRestartGx)
 		HookRestartGx()
+		Internal.SameRealm = {}
+		Internal.SameRealm[(GetRealmName():gsub("%s*%-*", ""))] = true
+		for i, realm in ipairs(GetAutoCompleteRealms()) do
+			Internal.SameRealm[(realm:gsub("%s*%-*", ""))] = true
+		end
 		if self.IncomingQueue then
 			for i, q in ipairs(self.IncomingQueue) do
 				HandleMessageIn(table.unpack(q, 1, 4))
