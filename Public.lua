@@ -491,7 +491,7 @@ local EMPTY_ENV = setmetatable({}, {
 
 function AddOn_Chomp.Deserialize(text)
 	if type(text) ~= "string" then
-		error("AddOn_Chomp.Deserialize(): text: expected string, got " .. objectType, 2)
+		error("AddOn_Chomp.Deserialize(): text: expected string, got " .. type(text), 2)
 	end
 	local success, func = pcall(loadstring, ("return %s"):format(text))
 	if not success then
