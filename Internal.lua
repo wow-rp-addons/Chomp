@@ -155,16 +155,17 @@ local function HandleMessageIn(prefix, text, channel, sender)
 	then return end
 
 	local bitField, sessionID, msgID, msgTotal, userText = text:match("^(%x%x%x)(%x%x%x)(%x%x%x)(%x%x%x)(.*)$")
-	bitField = tonumber(bitField, 16) or 0
-	sessionID = tonumber(sessionID, 16) or -1
-	msgID = tonumber(msgID, 16) or 1
-	msgTotal = tonumber(msgTotal, 16) or 1
+	bitField = bitField and tonumber(bitField, 16) or 0
+	sessionID = sessionID and tonumber(sessionID, 16) or -1
+	msgID = msgID and tonumber(msgID, 16) or 1
+	msgTotal = msgTotal and tonumber(msgTotal, 16) or 1
 	if prefixData.rawCallback then
 		xpcall(prefixData.rawCallback, geterrorhandler(), prefix, text, channel, sender, nil, nil, nil, nil, nil, nil, nil, nil, sessionID, msgID, msgTotal)
 	end
 	if userText then
 		text = userText
 	end
+	text = AddOn_Chomp.DecodeQuotedPrintable(text)
 
 	if bit.bor(bitField, Internal.KNOWN_BITS) ~= Internal.KNOWN_BITS then
 		-- Uh, found an unknown bit. What do?
@@ -225,7 +226,7 @@ end
 
 local function ParseInGameMessageLogged(prefix, text, kind, sender)
 	local name = AddOn_Chomp.NameMergedRealm(sender)
-	return prefix, AddOn_Chomp.DecodeQuotedPrintable(text), ("%s:LOGGED"):format(kind), name
+	return prefix, text, ("%s:LOGGED"):format(kind), name
 end
 
 local function ParseBattleNetMessage(prefix, text, kind, bnetIDGameAccount)

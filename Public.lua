@@ -519,7 +519,7 @@ local function TooManyContinuations(s1, s2)
 	return s1 .. (s2:gsub(".", CharToQuotedPrintable))
 end
 
-function AddOn_Chomp.EncodeQuotedPrintable(text)
+function AddOn_Chomp.EncodeQuotedPrintable(text, skipAsciiControl)
 	if type(text) ~= "string" then
 		error("AddOn_Chomp.EncodeQuotedPrintable(): text: expected string, got " .. type(text), 2)
 	end
@@ -528,7 +528,11 @@ function AddOn_Chomp.EncodeQuotedPrintable(text)
 	text = text:gsub("=", CharToQuotedPrintable)
 
 	-- ASCII control characters. \009 and \127 are allowed for some reason.
-	text = text:gsub("[%z\001-\008\010-\031]", CharToQuotedPrintable)
+	if skipAsciiControl then
+		text = text:gsub("%z", CharToQuotedPrintable)
+	else
+		text = text:gsub("[%z\001-\008\010-\031]", CharToQuotedPrintable)
+	end
 
 	-- Bytes not used in UTF-8 ever.
 	text = text:gsub("[\192\193\245-\255]", CharToQuotedPrintable)
@@ -758,18 +762,18 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 		-- crossrealm targets.
 		local bnetIDGameAccount = BNGetIDGameAccount(target)
 		if bnetIDGameAccount then
-			ToBattleNet(bitField, prefix, data, kind, bnetIDGameAccount, messageOptions.priority, messageOptions.queue)
+			ToBattleNet(bitField, prefix, AddOn_Chomp.EncodeQuotedPrintable(data, true), kind, bnetIDGameAccount, messageOptions.priority, messageOptions.queue)
 			sentBnet = true
 			return sentBnet, sentLogged, sentInGame
 		end
 	end
 	if (not messageOptions.forceMethod or messageOptions.forceMethod == "LOGGED") and prefixData.permitLogged then
-		ToInGameLogged(bitField, prefix, AddOn_Chomp.EncodeQuotedPrintable(data), kind, target, messageOptions.priority, messageOptions.queue)
+		ToInGameLogged(bitField, prefix, AddOn_Chomp.EncodeQuotedPrintable(data, false), kind, target, messageOptions.priority, messageOptions.queue)
 		sentLogged = true
 		return sentBnet, sentLogged, sentInGame
 	end
 	if (not messageOptions.forceMethod or messageOptions.forceMethod == "UNLOGGED") and prefixData.permitUnlogged then
-		ToInGame(bitField, prefix, data, kind, target, messageOptions.priority, messageOptions.queue)
+		ToInGame(bitField, prefix, AddOn_Chomp.EncodeQuotedPrintable(data, true), kind, target, messageOptions.priority, messageOptions.queue)
 		sentInGame = true
 		return sentBnet, sentLogged, sentInGame
 	end

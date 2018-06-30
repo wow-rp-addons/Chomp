@@ -155,6 +155,7 @@ local ChompAPI =
 			Arguments =
 			{
 				{ Name = "text", Type = "string", Nilable = false },
+				{ Name = "skipAsciiControl", Type = "boolean", Nilable = true },
 			},
 
 			Returns = 
