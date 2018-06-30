@@ -153,19 +153,21 @@ local function HandleMessageIn(prefix, text, channel, sender)
 		or (method == "BATTLENET" and not prefixData.permitBattleNet)
 		or (method == "LOGGED" and not prefixData.permitLogged)
 	then return end
+	if method == "BATTLENET" or method == "LOGGED" then
+		text = AddOn_Chomp.DecodeQuotedPrintable(text)
+	end
 
 	local bitField, sessionID, msgID, msgTotal, userText = text:match("^(%x%x%x)(%x%x%x)(%x%x%x)(%x%x%x)(.*)$")
 	bitField = bitField and tonumber(bitField, 16) or 0
 	sessionID = sessionID and tonumber(sessionID, 16) or -1
 	msgID = msgID and tonumber(msgID, 16) or 1
 	msgTotal = msgTotal and tonumber(msgTotal, 16) or 1
-	if prefixData.rawCallback then
-		xpcall(prefixData.rawCallback, geterrorhandler(), prefix, text, channel, sender, nil, nil, nil, nil, nil, nil, nil, nil, sessionID, msgID, msgTotal)
-	end
 	if userText then
 		text = userText
 	end
-	text = AddOn_Chomp.DecodeQuotedPrintable(text)
+	if prefixData.rawCallback then
+		xpcall(prefixData.rawCallback, geterrorhandler(), prefix, text, channel, sender, nil, nil, nil, nil, nil, nil, nil, nil, sessionID, msgID, msgTotal, bitField)
+	end
 
 	if bit.bor(bitField, Internal.KNOWN_BITS) ~= Internal.KNOWN_BITS then
 		-- Uh, found an unknown bit. What do?
@@ -208,7 +210,7 @@ local function HandleMessageIn(prefix, text, channel, sender)
 				end
 			end
 			if prefixData.validTypes[type(handlerData)] then
-				xpcall(prefixData.callback, geterrorhandler(), prefix, handlerData, channel, sender, nil, nil, nil, nil, nil, nil, nil, nil, sessionID, msgID, msgTotal)
+				xpcall(prefixData.callback, geterrorhandler(), prefix, handlerData, channel, sender, nil, nil, nil, nil, nil, nil, nil, nil, sessionID, msgID, msgTotal, bitField)
 			end
 			buffer[i] = false
 			if i == msgTotal then

@@ -773,7 +773,7 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 		return sentBnet, sentLogged, sentInGame
 	end
 	if (not messageOptions.forceMethod or messageOptions.forceMethod == "UNLOGGED") and prefixData.permitUnlogged then
-		ToInGame(bitField, prefix, AddOn_Chomp.EncodeQuotedPrintable(data, true), kind, target, messageOptions.priority, messageOptions.queue)
+		ToInGame(bitField, prefix, data, kind, target, messageOptions.priority, messageOptions.queue)
 		sentInGame = true
 		return sentBnet, sentLogged, sentInGame
 	end
