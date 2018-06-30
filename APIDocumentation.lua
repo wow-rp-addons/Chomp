@@ -202,7 +202,7 @@ local ChompAPI =
 			{
 				{ Name = "prefix", Type = "string", Nilable = false, Documentation = { "Maximum length of 16 bytes." } },
 				{ Name = "callback", Type = "function", Nilable = false, Documentation = { "Arguments passed are identical to CHAT_MSG_ADDON event." } },
-				{ Name = "prefixSettings", Type = "table", Nilable = true, Documentation = { "Accepts boolean keys of: permitUnlogged, permitLogged, permitBattleNet, fullMsgOnly.", "Accepts table keys of validTypes." } },
+				{ Name = "prefixSettings", Type = "table", Nilable = true, Documentation = { "Accepts boolean keys of: permitUnlogged, permitLogged, permitBattleNet, fullMsgOnly.", "Accepts table keys of: validTypes.", "Acceptions function keys of: rawCallback." } },
 			},
 		},
 		{

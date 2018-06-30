@@ -616,11 +616,14 @@ function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, prefixSettings)
 	end
 	if prefixSettings.validTypes and type(prefixSettings.validTypes) ~= "table" then
 		error("AddOn_Chomp.RegisterAddonPrefix(): prefixSettings.validTypes: expected table or nil, got " .. type(prefixSettings.validTypes), 2)
+	elseif prefixSettings.rawCallback and type(prefixSettings.rawCallback) ~= "function" then
+		error("AddOn_Chomp.RegisterAddonPrefix(): prefixSettings.rawCallback: expected function or nil, got " .. type(prefixSettings.rawCallback), 2)
 	end
 	local prefixData = Internal.Prefixes[prefix]
 	if not prefixData then
 		prefixData = {
-			Callbacks = {},
+			callback = callback,
+			rawCallback = prefixSettings.rawCallback,
 			fullMsgOnly = prefixSettings.fullMsgOnly,
 			permitUnlogged = prefixSettings.permitUnlogged,
 			permitLogged = prefixSettings.permitLogged,
@@ -640,7 +643,6 @@ function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, prefixSettings)
 	else
 		error("AddOn_Chomp.RegisterAddonPrefix(): prefix handler already registered, Chomp currently supports only one handler per prefix")
 	end
-	prefixData.Callbacks[#prefixData.Callbacks + 1] = callback
 end
 
 local function BNGetIDGameAccount(name)

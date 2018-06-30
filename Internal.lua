@@ -159,6 +159,9 @@ local function HandleMessageIn(prefix, text, channel, sender)
 	sessionID = tonumber(sessionID, 16) or -1
 	msgID = tonumber(msgID, 16) or 1
 	msgTotal = tonumber(msgTotal, 16) or 1
+	if prefixData.rawCallback then
+		xpcall(prefixData.rawCallback, geterrorhandler(), prefix, text, channel, sender, nil, nil, nil, nil, nil, nil, nil, nil, sessionID, msgID, msgTotal)
+	end
 	if userText then
 		text = userText
 	end
@@ -204,9 +207,7 @@ local function HandleMessageIn(prefix, text, channel, sender)
 				end
 			end
 			if prefixData.validTypes[type(handlerData)] then
-				for j, func in ipairs(prefixData.Callbacks) do
-					xpcall(func, geterrorhandler(), prefix, handlerData, channel, sender, nil, nil, nil, nil, nil, nil, nil, nil, sessionID, msgID, msgTotal)
-				end
+				xpcall(prefixData.callback, geterrorhandler(), prefix, handlerData, channel, sender, nil, nil, nil, nil, nil, nil, nil, nil, sessionID, msgID, msgTotal)
 			end
 			buffer[i] = false
 			if i == msgTotal then
