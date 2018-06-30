@@ -631,8 +631,10 @@ function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, prefixSettings)
 		}
 		local validTypes = prefixSettings.validTypes or DEFAULT_SETTINGS.validTypes
 		prefixData.validTypes = {}
-		for dataType, isValid in pairs(validTypes) do
-			prefixData.validTypes[dataType] = isValid
+		for dataType, func in pairs(Serialize) do
+			if validTypes[dataType] then
+				prefixData.validTypes[dataType] = true
+			end
 		end
 		Internal.Prefixes[prefix] = prefixData
 		if not C_ChatInfo.IsAddonMessagePrefixRegistered(prefix) then
@@ -713,7 +715,7 @@ local function ToBattleNet(bitField, prefix, text, kind, bnetIDGameAccount, prio
 end
 
 local DEFAULT_OPTIONS = {}
-function AddOn_Chomp.SmartAddonMessage(prefix, text, kind, target, messageOptions)
+function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOptions)
 	local prefixData = Internal.Prefixes[prefix]
 	if not prefixData then
 		error("AddOn_Chomp.SmartAddonMessage(): prefix: prefix has not been registered with Chomp", 2)
@@ -727,8 +729,11 @@ function AddOn_Chomp.SmartAddonMessage(prefix, text, kind, target, messageOption
 		messageOptions = DEFAULT_OPTIONS
 	end
 
-	if not messageOptions.serialize and type(text) ~= "string" then
-		error("AddOn_Chomp.SmartAddonMessage(): text: expected string or serialization, got " .. type(text), 2)
+	local dataType = type(data)
+	if not prefixData.validTypes[dataType] then
+		error("AddOn_Chomp.SmartAddonMessage(): data: type not registered as valid: " .. dataType, 2)
+	elseif dataType ~= "string" and not messageOptions.serialize then
+		error("AddOn_Chomp.SmartAddonMessage(): data: no serialization requested, but serialization required for type: " .. dataType, 2)
 	elseif messageOptions.priority and not PRIORITIES_HASH[messageOptions.priority] then
 		error("AddOn_Chomp.SmartAddonMessage(): messageOptions.priority: expected \"HIGH\", \"MEDIUM\", or \"LOW\", got " .. tostring(priority), 2)
 	elseif messageOptions.queue and type(messageOptions.queue) ~= "string" then
@@ -736,13 +741,13 @@ function AddOn_Chomp.SmartAddonMessage(prefix, text, kind, target, messageOption
 	end
 
 	if not IsLoggedIn() then
-		QueueMessageOut("SmartAddonMessage", prefix, text, kind, target, messageOptions)
+		QueueMessageOut("SmartAddonMessage", prefix, data, kind, target, messageOptions)
 	end
 
 	local bitField = 0x000
 	if messageOptions.serialize then
 		bitField = bit.bor(bitField, Internal.BITS.SERIALIZE)
-		text = AddOn_Chomp.Serialize(text)
+		data = AddOn_Chomp.Serialize(data)
 	end
 
 	target = AddOn_Chomp.NameMergedRealm(target)
@@ -752,7 +757,7 @@ function AddOn_Chomp.SmartAddonMessage(prefix, text, kind, target, messageOption
 
 	if prefixData.permitLogged then
 		if loggedCapable ~= false then
-			ToInGameLogged(bitField, prefix, AddOn_Chomp.EncodeQuotedPrintable(text), kind, target, messageOptions.priority, messageOptions.queue)
+			ToInGameLogged(bitField, prefix, AddOn_Chomp.EncodeQuotedPrintable(data), kind, target, messageOptions.priority, messageOptions.queue)
 			sentLogged = true
 			if loggedCapable == true then
 				return sentBnet, sentLogged, sentInGame
@@ -762,7 +767,7 @@ function AddOn_Chomp.SmartAddonMessage(prefix, text, kind, target, messageOption
 	if prefixData.permitBattleNet and kind == "WHISPER" then
 		local bnetIDGameAccount = BNGetIDGameAccount(target)
 		if bnetIDGameAccount and bnetCapable ~= false then
-			ToBattleNet(bitField, prefix, text, kind, bnetIDGameAccount, messageOptions.priority, messageOptions.queue)
+			ToBattleNet(bitField, prefix, data, kind, bnetIDGameAccount, messageOptions.priority, messageOptions.queue)
 			sentBnet = true
 			if bnetCapable == true then
 				return sentBnet, sentLogged, sentInGame
@@ -770,7 +775,7 @@ function AddOn_Chomp.SmartAddonMessage(prefix, text, kind, target, messageOption
 		end
 	end
 	if prefixData.permitUnlogged then
-		ToInGame(bitField, prefix, text, kind, target, messageOptions.priority, messageOptions.queue)
+		ToInGame(bitField, prefix, data, kind, target, messageOptions.priority, messageOptions.queue)
 		sentInGame = true
 		return sentBnet, sentLogged, sentInGame
 	end
