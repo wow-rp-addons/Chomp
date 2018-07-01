@@ -540,13 +540,18 @@ function AddOn_Chomp.EncodeQuotedPrintable(text, skipExtraEncoding)
 	-- Bytes not used in UTF-8 ever.
 	text = text:gsub("[\192\193\245-\255]", CharToQuotedPrintable)
 
+	-- Multiple leading bytes.
+	text = text:gsub("[\194-\244]+[\194-\244]", function(s)
+		return (s:gsub(".", CharToQuotedPrintable, #s - 1))
+	end)
+
 	--- Unicode 11.0.0, Table 3-7 malformed UTF-8 byte sequences.
 	text = text:gsub("\224[\128-\159][\128-\191]", StringToQuotedPrintable)
 	text = text:gsub("\240[\128-\143][\128-\191][\128-\191]", StringToQuotedPrintable)
 	text = text:gsub("\244[\143-\191][\128-\191][\128-\191]", StringToQuotedPrintable)
 
 	-- 2-4-byte leading bytes without enough continuation bytes.
-	text = text:gsub("[\194-\244]%f[^\128-\191]", CharToQuotedPrintable)
+	text = text:gsub("[\194-\244]%f[^\128-\191\194-\244]", CharToQuotedPrintable)
 	-- 3-4-byte leading bytes without enough continuation bytes.
 	text = text:gsub("[\224-\244][\128-\191]%f[^\128-\191]", StringToQuotedPrintable)
 	-- 4-byte leading bytes without enough continuation bytes.
@@ -554,11 +559,6 @@ function AddOn_Chomp.EncodeQuotedPrintable(text, skipExtraEncoding)
 
 	-- Continuation bytes without leading bytes.
 	text = text:gsub("%f[\128-\191\194-\244][\128-\191]+", StringToQuotedPrintable)
-
-	-- Multiple leading bytes.
-	text = text:gsub("[\194-\244]+[\194-\244]", function(s)
-		return (s:gsub(".", CharToQuotedPrintable, #s - 1))
-	end)
 
 	-- 2-byte character with too many continuation bytes
 	text = text:gsub("([\194-\223][\128-\191])([\128-\191]+)", TooManyContinuations)
