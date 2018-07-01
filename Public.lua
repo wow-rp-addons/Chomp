@@ -745,6 +745,10 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 		error("AddOn_Chomp.SmartAddonMessage(): messageOptions.priority: expected \"HIGH\", \"MEDIUM\", or \"LOW\", got " .. tostring(priority), 2)
 	elseif messageOptions.queue and type(messageOptions.queue) ~= "string" then
 		error("AddOn_Chomp.SmartAddonMessage(): messageOptions.queue: expected string or nil, got " .. type(queue), 2)
+	elseif messageOptions.binaryBlob and messageOptions.forceMethod == "LOGGED" then
+		error("AddOn_Chomp.SmartAddonMessage(): messageOptions.binaryBlob: cannot send binary blobs over LOGGED messages", 2)
+	elseif messageOptions.binaryBlob and not prefixData.permitBattleNet and not prefixData.permitUnlogged then
+		error("AddOn_Chomp.SmartAddonMessage(): messageOptions.binaryBlob: cannot send binary blobs without prefixSettings.permitBattleNet or prefixSettings.permitUnlogged", 2)
 	end
 
 	if not IsLoggedIn() then
@@ -770,7 +774,7 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 			return sentBnet, sentLogged, sentInGame
 		end
 	end
-	if (not messageOptions.forceMethod or messageOptions.forceMethod == "LOGGED") and prefixData.permitLogged then
+	if not messageOptions.binaryBlob and (not messageOptions.forceMethod or messageOptions.forceMethod == "LOGGED") and prefixData.permitLogged then
 		ToInGameLogged(bitField, prefix, AddOn_Chomp.EncodeQuotedPrintable(data, false), kind, target, messageOptions.priority, messageOptions.queue)
 		sentLogged = true
 		return sentBnet, sentLogged, sentInGame
