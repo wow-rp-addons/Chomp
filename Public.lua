@@ -519,7 +519,7 @@ local function TooManyContinuations(s1, s2)
 	return s1 .. (s2:gsub(".", CharToQuotedPrintable))
 end
 
-function AddOn_Chomp.EncodeQuotedPrintable(text, skipAsciiControl)
+function AddOn_Chomp.EncodeQuotedPrintable(text, skipExtraEncoding)
 	if type(text) ~= "string" then
 		error("AddOn_Chomp.EncodeQuotedPrintable(): text: expected string, got " .. type(text), 2)
 	end
@@ -527,10 +527,13 @@ function AddOn_Chomp.EncodeQuotedPrintable(text, skipAsciiControl)
 	-- First, the quoted-printable escape character.
 	text = text:gsub("=", CharToQuotedPrintable)
 
-	-- ASCII control characters. \009 and \127 are allowed for some reason.
-	if skipAsciiControl then
+	if skipExtraEncoding then
+		-- Just NUL, which never works normally.
 		text = text:gsub("%z", CharToQuotedPrintable)
 	else
+		-- Logged messages don't permit UI escape sequences.
+		text = text:gsub("|", CharToQuotedPrintable)
+		-- ASCII control characters. \009 and \127 are allowed for some reason.
 		text = text:gsub("[%z\001-\008\010-\031]", CharToQuotedPrintable)
 	end
 
