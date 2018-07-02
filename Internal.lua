@@ -150,10 +150,6 @@ local function HandleMessageIn(prefix, text, channel, sender)
 	end
 
 	local method = channel:match("%:(%u+)$")
-	if (not method and not prefixData.permitUnlogged)
-		or (method == "BATTLENET" and not prefixData.permitBattleNet)
-		or (method == "LOGGED" and not prefixData.permitLogged)
-	then return end
 	if method == "BATTLENET" or method == "LOGGED" then
 		text = AddOn_Chomp.DecodeQuotedPrintable(text)
 	end

@@ -600,8 +600,6 @@ function AddOn_Chomp.SafeSubString(text, first, last, textLen)
 end
 
 local DEFAULT_SETTINGS = {
-	permitLogged = true,
-	permitBattleNet = true,
 	fullMsgOnly = true,
 	validTypes = {
 		["string"] = true,
@@ -632,9 +630,6 @@ function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, prefixSettings)
 			callback = callback,
 			rawCallback = prefixSettings.rawCallback,
 			fullMsgOnly = prefixSettings.fullMsgOnly,
-			permitUnlogged = prefixSettings.permitUnlogged,
-			permitLogged = prefixSettings.permitLogged,
-			permitBattleNet = prefixSettings.permitBattleNet,
 		}
 		local validTypes = prefixSettings.validTypes or DEFAULT_SETTINGS.validTypes
 		prefixData.validTypes = {}
@@ -747,8 +742,6 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 		error("AddOn_Chomp.SmartAddonMessage(): messageOptions.queue: expected string or nil, got " .. type(queue), 2)
 	elseif messageOptions.binaryBlob and messageOptions.forceMethod == "LOGGED" then
 		error("AddOn_Chomp.SmartAddonMessage(): messageOptions.binaryBlob: cannot send binary blobs over LOGGED messages", 2)
-	elseif messageOptions.binaryBlob and not prefixData.permitBattleNet and not prefixData.permitUnlogged then
-		error("AddOn_Chomp.SmartAddonMessage(): messageOptions.binaryBlob: cannot send binary blobs without prefixSettings.permitBattleNet or prefixSettings.permitUnlogged", 2)
 	end
 
 	if not IsLoggedIn() then
@@ -764,7 +757,7 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 	target = AddOn_Chomp.NameMergedRealm(target)
 	local sentBnet, sentLogged, sentInGame = false, false, false
 
-	if (not messageOptions.forceMethod or messageOptions.forceMethod == "BATTLENET") and prefixData.permitBattleNet and kind == "WHISPER" then
+	if (not messageOptions.forceMethod or messageOptions.forceMethod == "BATTLENET") and kind == "WHISPER" then
 		-- BNGetIDGameAccount() only returns an ID for crossfaction and
 		-- crossrealm targets.
 		local bnetIDGameAccount = BNGetIDGameAccount(target)
@@ -774,12 +767,12 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 			return sentBnet, sentLogged, sentInGame
 		end
 	end
-	if not messageOptions.binaryBlob and (not messageOptions.forceMethod or messageOptions.forceMethod == "LOGGED") and prefixData.permitLogged then
+	if not messageOptions.binaryBlob and (not messageOptions.forceMethod or messageOptions.forceMethod == "LOGGED") then
 		ToInGameLogged(bitField, prefix, AddOn_Chomp.EncodeQuotedPrintable(data, false), kind, target, messageOptions.priority, messageOptions.queue)
 		sentLogged = true
 		return sentBnet, sentLogged, sentInGame
 	end
-	if (not messageOptions.forceMethod or messageOptions.forceMethod == "UNLOGGED") and prefixData.permitUnlogged then
+	if (not messageOptions.forceMethod or messageOptions.forceMethod == "UNLOGGED") then
 		ToInGame(bitField, prefix, data, kind, target, messageOptions.priority, messageOptions.queue)
 		sentInGame = true
 		return sentBnet, sentLogged, sentInGame
@@ -802,14 +795,12 @@ function AddOn_Chomp.CheckReportGUID(prefix, guid)
 		return false, "UNKNOWN"
 	end
 	local target = AddOn_Chomp.NameMergedRealm(name, realm)
-	if prefixData.permitBattleNet and BNGetIDGameAccount(target) then
+	if BNGetIDGameAccount(target) then
 		return false, "BATTLENET"
-	elseif prefixData.permitLogged then
-		ReportLocation:SetGUID(guid)
-		local isReportable = C_ChatInfo.CanReportPlayer(ReportLocation)
-		return isReportable, "LOGGED"
 	end
-	return false, "UNLOGGED"
+	ReportLocation:SetGUID(guid)
+	local isReportable = C_ChatInfo.CanReportPlayer(ReportLocation)
+	return isReportable, "LOGGED"
 end
 
 function AddOn_Chomp.ReportGUID(prefix, guid, customMessage)
