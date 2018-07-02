@@ -118,7 +118,7 @@ Internal.BITS = {
 	UNUSED3   = 0x100,
 	UNUSED2   = 0x200,
 	UNUSED1   = 0x400,
-	UNUSED0   = 0x800,
+	DEPRECATE = 0x800,
 }
 
 Internal.KNOWN_BITS = 0
@@ -133,6 +133,7 @@ end
 	HELPER FUNCTIONS
 ]]
 
+local oneTimeError
 local function HandleMessageIn(prefix, text, channel, sender)
 	if not IsLoggedIn() then
 		if not Internal.IncomingQueue then
@@ -169,9 +170,13 @@ local function HandleMessageIn(prefix, text, channel, sender)
 		xpcall(prefixData.rawCallback, geterrorhandler(), prefix, text, channel, sender, nil, nil, nil, nil, nil, nil, nil, nil, sessionID, msgID, msgTotal, bitField)
 	end
 
-	if bit.bor(bitField, Internal.KNOWN_BITS) ~= Internal.KNOWN_BITS then
-		-- Uh, found an unknown bit. What do?
-		-- TODO: Actually do something about it.
+	if bit.bor(bitField, Internal.KNOWN_BITS) ~= Internal.KNOWN_BITS or bit.band(bitField, Internal.BITS.DEPRECATE) == Internal.BITS.DEPRECATE then
+		-- Uh, found an unknown bit, or a bit we're explicitly not to parse.
+		if not oneTimeError then
+			oneTimeError = true
+			error("AddOn_Chomp: Recieved an addon message that cannot be parsed, check your addons for updates. (This message will only display once per session, but there may be more unusable addon messages.)")
+		end
+		return
 	end
 
 	local deserialize = bit.band(bitField, Internal.BITS.SERIALIZE) == Internal.BITS.SERIALIZE
