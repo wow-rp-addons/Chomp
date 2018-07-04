@@ -134,13 +134,13 @@ end
 ]]
 
 local oneTimeError
-local function HandleMessageIn(prefix, text, channel, sender)
+local function HandleMessageIn(prefix, text, channel, sender, target, zoneChannelID, localID, name, instanceID)
 	if not IsLoggedIn() then
 		if not Internal.IncomingQueue then
 			Internal.IncomingQueue = {}
 		end
 		local q = Internal.IncomingQueue
-		q[#q + 1] = { prefix, text, channel, sender }
+		q[#q + 1] = { prefix, text, channel, sender, target, zoneChannelID, localID, name, instanceID }
 		return
 	end
 
@@ -163,7 +163,7 @@ local function HandleMessageIn(prefix, text, channel, sender)
 		text = userText
 	end
 	if prefixData.rawCallback then
-		xpcall(prefixData.rawCallback, geterrorhandler(), prefix, text, channel, sender, nil, nil, nil, nil, nil, nil, nil, nil, sessionID, msgID, msgTotal, bitField)
+		xpcall(prefixData.rawCallback, geterrorhandler(), prefix, text, channel, sender, target, zoneChannelID, localID, name, instanceID, nil, nil, nil, sessionID, msgID, msgTotal, bitField)
 	end
 
 	if bit.bor(bitField, Internal.KNOWN_BITS) ~= Internal.KNOWN_BITS or bit.band(bitField, Internal.BITS.DEPRECATE) == Internal.BITS.DEPRECATE then
@@ -211,7 +211,7 @@ local function HandleMessageIn(prefix, text, channel, sender)
 				end
 			end
 			if prefixData.validTypes[type(handlerData)] then
-				xpcall(prefixData.callback, geterrorhandler(), prefix, handlerData, channel, sender, nil, nil, nil, nil, nil, nil, nil, nil, sessionID, msgID, msgTotal, bitField)
+				xpcall(prefixData.callback, geterrorhandler(), prefix, handlerData, channel, sender, target, zoneChannelID, localID, name, instanceID, nil, nil, nil, sessionID, msgID, msgTotal, bitField)
 			end
 			buffer[i] = false
 			if i == msgTotal then
@@ -223,19 +223,24 @@ local function HandleMessageIn(prefix, text, channel, sender)
 	end
 end
 
-local function ParseInGameMessage(prefix, text, kind, sender)
-	return prefix, text, kind, AddOn_Chomp.NameMergedRealm(sender)
+local function ParseInGameMessage(prefix, text, kind, sender, target, zoneChannelID, localID, name, instanceID)
+	if kind == "WHISPER" then
+		target = AddOn_Chomp.NameMergedRealm(target)
+	end
+	return prefix, text, kind, AddOn_Chomp.NameMergedRealm(sender), target, zoneChannelID, localID, name, instanceID
 end
 
-local function ParseInGameMessageLogged(prefix, text, kind, sender)
-	local name = AddOn_Chomp.NameMergedRealm(sender)
-	return prefix, text, ("%s:LOGGED"):format(kind), name
+local function ParseInGameMessageLogged(prefix, text, kind, sender, target, zoneChannelID, localID, name, instanceID)
+	if kind == "WHISPER" then
+		target = AddOn_Chomp.NameMergedRealm(target)
+	end
+	return prefix, text, ("%s:LOGGED"):format(kind), AddOn_Chomp.NameMergedRealm(sender), target, zoneChannelID, localID, name, instanceID
 end
 
 local function ParseBattleNetMessage(prefix, text, kind, bnetIDGameAccount)
 	local active, characterName, client, realmName = BNGetGameAccountInfo(bnetIDGameAccount)
 	local name = AddOn_Chomp.NameMergedRealm(characterName, realmName)
-	return prefix, text, ("%s:BATTLENET"):format(kind), name
+	return prefix, text, ("%s:BATTLENET"):format(kind), name, AddOn_Chomp.NameMergedRealm(UnitName("player")), 0, 0, "", 0
 end
 
 --[[
