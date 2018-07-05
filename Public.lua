@@ -724,8 +724,12 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 		error("AddOn_Chomp.SmartAddonMessage(): prefix: prefix has not been registered with Chomp", 2)
 	elseif type(kind) ~= "string" then
 		error("AddOn_Chomp.SmartAddonMessage(): kind: expected string, got " .. type(kind), 2)
-	elseif type(target) ~= "string" then
+	elseif kind == "WHISPER" and type(target) ~= "string" then
 		error("AddOn_Chomp.SmartAddonMessage(): target: expected string, got " .. type(target), 2)
+	elseif kind == "CHANNEL" and type(target) ~= "number" then
+		error("AddOn_Chomp.SmartAddonMessage(): target: expected number, got " .. type(target), 2)
+	elseif target and kind ~= "WHISPER" and kind ~= "CHANNEL" then
+		error("AddOn_Chomp.SmartAddonMessage(): target: expected nil, got " .. type(target), 2)
 	end
 
 	if not messageOptions then
@@ -756,10 +760,10 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 	end
 
 	target = AddOn_Chomp.NameMergedRealm(target)
-	local queue = ("%s%s%s"):format(prefix, kind, target)
+	local queue = ("%s%s%s"):format(prefix, kind, tostring(target) or "")
 	local sentBnet, sentLogged, sentInGame = false, false, false
 
-	if (not messageOptions.forceMethod or messageOptions.forceMethod == "BATTLENET") and kind == "WHISPER" then
+	if kind == "WHISPER" and (not messageOptions.forceMethod or messageOptions.forceMethod == "BATTLENET") then
 		-- BNGetIDGameAccount() only returns an ID for crossfaction and
 		-- crossrealm targets.
 		local bnetIDGameAccount = BNGetIDGameAccount(target)
@@ -770,7 +774,7 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 		end
 	end
 	local targetUnit = Ambiguate(target, "none")
-	if prefixData.broadcastPrefix and messageOptions.allowBroadcast and UnitRealmRelationship(targetUnit) == LE_REALM_RELATION_COALESCED then
+	if kind == "WHISPER" and prefixData.broadcastPrefix and messageOptions.allowBroadcast and UnitRealmRelationship(targetUnit) == LE_REALM_RELATION_COALESCED then
 		bitField = bit.bor(bitField, Internal.BITS.BROADCAST)
 		kind = UnitInRaid(targetUnit, LE_PARTY_CATEGORY_HOME) and not UnitInSubgroup(targetUnit, LE_PARTY_CATEGORY_HOME) and "RAID" or UnitInParty(targetUnit, LE_PARTY_CATEGORY_HOME) and "PARTY" or "INSTANCE_CHAT"
 		text = ("%s\009%s"):format(AddOn_Chomp.NameMergedRealm(target), text)
