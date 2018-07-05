@@ -756,6 +756,7 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 	end
 
 	target = AddOn_Chomp.NameMergedRealm(target)
+	local queue = ("%s%s%s"):format(prefix, kind, target)
 	local sentBnet, sentLogged, sentInGame = false, false, false
 
 	if (not messageOptions.forceMethod or messageOptions.forceMethod == "BATTLENET") and kind == "WHISPER" then
@@ -763,7 +764,7 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 		-- crossrealm targets.
 		local bnetIDGameAccount = BNGetIDGameAccount(target)
 		if bnetIDGameAccount then
-			ToBattleNet(bitField, prefix, AddOn_Chomp.EncodeQuotedPrintable(data, true), kind, bnetIDGameAccount, messageOptions.priority, messageOptions.queue)
+			ToBattleNet(bitField, prefix, AddOn_Chomp.EncodeQuotedPrintable(data, true), kind, bnetIDGameAccount, messageOptions.priority, messageOptions.queue or queue)
 			sentBnet = true
 			return sentBnet, sentLogged, sentInGame
 		end
@@ -776,12 +777,12 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 		target = nil
 	end
 	if not messageOptions.binaryBlob and (not messageOptions.forceMethod or messageOptions.forceMethod == "LOGGED") then
-		ToInGameLogged(bitField, prefix, AddOn_Chomp.EncodeQuotedPrintable(data, false), kind, target, messageOptions.priority, messageOptions.queue)
+		ToInGameLogged(bitField, prefix, AddOn_Chomp.EncodeQuotedPrintable(data, false), kind, target, messageOptions.priority, messageOptions.queue or queue)
 		sentLogged = true
 		return sentBnet, sentLogged, sentInGame
 	end
 	if (not messageOptions.forceMethod or messageOptions.forceMethod == "UNLOGGED") then
-		ToInGame(bitField, prefix, data, kind, target, messageOptions.priority, messageOptions.queue)
+		ToInGame(bitField, prefix, data, kind, target, messageOptions.priority, messageOptions.queue or queue)
 		sentInGame = true
 		return sentBnet, sentLogged, sentInGame
 	end
