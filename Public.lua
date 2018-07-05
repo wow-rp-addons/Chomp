@@ -630,6 +630,7 @@ function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, prefixSettings)
 			callback = callback,
 			rawCallback = prefixSettings.rawCallback,
 			fullMsgOnly = prefixSettings.fullMsgOnly,
+			broadcastPrefix = prefixSettings.broadcastPrefix,
 		}
 		local validTypes = prefixSettings.validTypes or DEFAULT_SETTINGS.validTypes
 		prefixData.validTypes = {}
@@ -766,6 +767,13 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 			sentBnet = true
 			return sentBnet, sentLogged, sentInGame
 		end
+	end
+	local targetUnit = Ambiguate(target, "none")
+	if prefixData.broadcastPrefix and messageOptions.allowBroadcast and UnitRealmRelationship(targetUnit) == LE_REALM_RELATION_COALESCED then
+		bitField = bit.bor(bitField, Internal.BITS.BROADCAST)
+		kind = UnitInRaid(targetUnit, LE_PARTY_CATEGORY_HOME) and not UnitInSubgroup(targetUnit, LE_PARTY_CATEGORY_HOME) and "RAID" or UnitInParty(targetUnit, LE_PARTY_CATEGORY_HOME) and "PARTY" or "INSTANCE_CHAT"
+		text = ("%s\009%s"):format(AddOn_Chomp.NameMergedRealm(target), text)
+		target = nil
 	end
 	if not messageOptions.binaryBlob and (not messageOptions.forceMethod or messageOptions.forceMethod == "LOGGED") then
 		ToInGameLogged(bitField, prefix, AddOn_Chomp.EncodeQuotedPrintable(data, false), kind, target, messageOptions.priority, messageOptions.queue)

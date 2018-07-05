@@ -111,7 +111,7 @@ Internal.BITS = {
 	UNUSEDA   = 0x002,
 	UNUSED9   = 0x004,
 	UNUSES8   = 0x008,
-	UNUSED7   = 0x010,
+	BROADCAST = 0x010,
 	UNUSED6   = 0x020,
 	UNUSED5   = 0x040,
 	UNUSED4   = 0x080,
@@ -162,9 +162,6 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 	if userText then
 		text = userText
 	end
-	if prefixData.rawCallback then
-		xpcall(prefixData.rawCallback, geterrorhandler(), prefix, text, channel, sender, target, zoneChannelID, localID, name, instanceID, nil, nil, nil, sessionID, msgID, msgTotal, bitField)
-	end
 
 	if bit.bor(bitField, Internal.KNOWN_BITS) ~= Internal.KNOWN_BITS or bit.band(bitField, Internal.BITS.DEPRECATE) == Internal.BITS.DEPRECATE then
 		-- Uh, found an unknown bit, or a bit we're explicitly not to parse.
@@ -175,14 +172,47 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 		return
 	end
 
-	local deserialize = bit.band(bitField, Internal.BITS.SERIALIZE) == Internal.BITS.SERIALIZE
-	local fullMsgOnly = prefixData.fullMsgOnly or deserialize
-
 	if not prefixData[sender] then
 		prefixData[sender] = {}
 	end
+
+	local isBroadcast = bit.band(bitField, Internal.BITS.BROADCAST) == Internal.BITS.BROADCAST
+	if isBroadcast then
+		if not prefixData.broadcastPrefix then
+			-- If the prefix doesn't want broadcast data, don't even parse
+			-- further at all.
+			return
+		end
+		if msgID == 1 then
+			local broadcastTarget, userText = text:match("^([^\009]*\009(.*)$")
+			if broadcastTarget ~= AddOn_Chomp.NameMergedRealm(UnitFullName("player")) then
+				-- Mark session as explicitly not for us, and bail out.
+				prefixData[sender][sessionID] = false
+				return
+			else
+				target = broadcastTarget
+				text = userText
+			end
+		elseif prefixData[sender][sessionID] == false then
+			-- Already determined this session ID is not for us.
+			return
+		else
+			target = prefixData[sender][sessionID].broadcastTarget
+		end
+	end
+
+	if prefixData.rawCallback then
+		xpcall(prefixData.rawCallback, geterrorhandler(), prefix, text, channel, sender, target, zoneChannelID, localID, name, instanceID, nil, nil, nil, sessionID, msgID, msgTotal, bitField)
+	end
+
+	local deserialize = bit.band(bitField, Internal.BITS.SERIALIZE) == Internal.BITS.SERIALIZE
+	local fullMsgOnly = prefixData.fullMsgOnly or deserialize
+
 	if not prefixData[sender][sessionID] then
 		prefixData[sender][sessionID] = {}
+		if isBroadcast then
+			prefixData[sender][sessionID].broadcastTarget = target
+		end
 	end
 	local buffer = prefixData[sender][sessionID]
 	buffer[msgID] = text
