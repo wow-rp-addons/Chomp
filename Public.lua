@@ -745,8 +745,6 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 		error("AddOn_Chomp.SmartAddonMessage(): messageOptions.priority: expected \"HIGH\", \"MEDIUM\", or \"LOW\", got " .. tostring(priority), 2)
 	elseif messageOptions.queue and type(messageOptions.queue) ~= "string" then
 		error("AddOn_Chomp.SmartAddonMessage(): messageOptions.queue: expected string or nil, got " .. type(queue), 2)
-	elseif messageOptions.binaryBlob and messageOptions.forceMethod == "LOGGED" then
-		error("AddOn_Chomp.SmartAddonMessage(): messageOptions.binaryBlob: cannot send binary blobs over LOGGED messages", 2)
 	end
 
 	if not IsLoggedIn() then
@@ -761,35 +759,35 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 
 	target = AddOn_Chomp.NameMergedRealm(target)
 	local queue = ("%s%s%s"):format(prefix, kind, tostring(target) or "")
-	local sentBnet, sentLogged, sentInGame = false, false, false
 
-	if kind == "WHISPER" and (not messageOptions.forceMethod or messageOptions.forceMethod == "BATTLENET") then
+	if kind == "WHISPER" then
 		-- BNGetIDGameAccount() only returns an ID for crossfaction and
 		-- crossrealm targets.
 		local bnetIDGameAccount = BNGetIDGameAccount(target)
 		if bnetIDGameAccount then
 			ToBattleNet(bitField, prefix, AddOn_Chomp.EncodeQuotedPrintable(data, true), kind, bnetIDGameAccount, messageOptions.priority, messageOptions.queue or queue)
 			sentBnet = true
-			return sentBnet, sentLogged, sentInGame
+			return "BATTLENET"
+		end
+		local targetUnit = Ambiguate(target, "none")
+		if prefixData.broadcastPrefix and messageOptions.allowBroadcast and UnitRealmRelationship(targetUnit) == LE_REALM_RELATION_COALESCED then
+			bitField = bit.bor(bitField, Internal.BITS.BROADCAST)
+			kind = UnitInRaid(targetUnit, LE_PARTY_CATEGORY_HOME) and not UnitInSubgroup(targetUnit, LE_PARTY_CATEGORY_HOME) and "RAID" or UnitInParty(targetUnit, LE_PARTY_CATEGORY_HOME) and "PARTY" or "INSTANCE_CHAT"
+			text = ("%s\009%s"):format(not messageOptions.universalBroadcast and AddOn_Chomp.NameMergedRealm(target) or "", text)
+			target = nil
+			if messageOptions.universalBroadcast then
+				queue = nil
+			end
 		end
 	end
-	local targetUnit = Ambiguate(target, "none")
-	if kind == "WHISPER" and prefixData.broadcastPrefix and messageOptions.allowBroadcast and UnitRealmRelationship(targetUnit) == LE_REALM_RELATION_COALESCED then
-		bitField = bit.bor(bitField, Internal.BITS.BROADCAST)
-		kind = UnitInRaid(targetUnit, LE_PARTY_CATEGORY_HOME) and not UnitInSubgroup(targetUnit, LE_PARTY_CATEGORY_HOME) and "RAID" or UnitInParty(targetUnit, LE_PARTY_CATEGORY_HOME) and "PARTY" or "INSTANCE_CHAT"
-		text = ("%s\009%s"):format(not messageOptions.universalBroadcast and AddOn_Chomp.NameMergedRealm(target) or "", text)
-		target = nil
-	end
-	if not messageOptions.binaryBlob and (not messageOptions.forceMethod or messageOptions.forceMethod == "LOGGED") then
+	if not messageOptions.binaryBlob then
 		ToInGameLogged(bitField, prefix, AddOn_Chomp.EncodeQuotedPrintable(data, false), kind, target, messageOptions.priority, messageOptions.queue or queue)
 		sentLogged = true
-		return sentBnet, sentLogged, sentInGame
+		return "LOGGED"
 	end
-	if (not messageOptions.forceMethod or messageOptions.forceMethod == "UNLOGGED") then
-		ToInGame(bitField, prefix, data, kind, target, messageOptions.priority, messageOptions.queue or queue)
-		sentInGame = true
-		return sentBnet, sentLogged, sentInGame
-	end
+	ToInGame(bitField, prefix, data, kind, target, messageOptions.priority, messageOptions.queue or queue)
+	sentInGame = true
+	return "UNLOGGED"
 end
 
 local ReportLocation = CreateFromMixins(PlayerLocationMixin)

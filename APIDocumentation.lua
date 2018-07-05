@@ -215,14 +215,12 @@ local ChompAPI =
 				{ Name = "prefix", Type = "string", Nilable = false, Documentation = { "Maximum length of 16 bytes." } },
 				{ Name = "data", Type = "any", Nilable = false, Documentation = { "String required unless the message has been set to require serialization.", "Only types registered as valid for the prefix may be used.", "The outgoing text will be split (based on selected method's maximum message size, encoded (based on selected method's permitted byte sequences), and otherwise transformed as necessary prior to sending." } },
 				{ Name = "target", Type = "string", Nilable = false },
-				{ Name = "messageOptions", Type = "table", Nilable = true, Documentation = { "This table should be stored and reused if you send multiple messages with the same options. However, modifying the referenced table should be avoided after passing it to Chomp.", "Accepts string keys of: priority, queue, forceMethod.", "Accepts boolean keys of: serialize, binaryBlob, allowBroadcast, universalBroadcast." }}
+				{ Name = "messageOptions", Type = "table", Nilable = true, Documentation = { "This table should be stored and reused if you send multiple messages with the same options. However, modifying the referenced table should be avoided after passing it to Chomp.", "Accepts string keys of: priority, queue.", "Accepts boolean keys of: serialize, binaryBlob, allowBroadcast, universalBroadcast." }}
 			},
 
 			Returns = 
 			{
-				{ Name = "sentBnet", Type = "bool", Nilable = false },
-				{ Name = "sentLogged", Type = "bool", Nilable = false },
-				{ Name = "sentInGame", Type = "bool", Nilable = false },
+				{ Name = "sentMethod", Type = "string", Nilable = false },
 			},
 		},
 		{
