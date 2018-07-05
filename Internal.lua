@@ -185,11 +185,12 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 		end
 		if msgID == 1 then
 			local broadcastTarget, userText = text:match("^([^\009]*)\009(.*)$")
-			if broadcastTarget ~= AddOn_Chomp.NameMergedRealm(UnitFullName("player")) then
+			local ourName = AddOn_Chomp.NameMergedRealm(UnitFullName("player"))
+			if broadcastTarget ~= "" and broadcastTarget ~= ourName then
 				-- Not for us, quit processing.
 				return
 			else
-				target = broadcastTarget
+				target = ourName
 				text = userText
 			end
 		elseif not prefixData[sender][sessionID] then
