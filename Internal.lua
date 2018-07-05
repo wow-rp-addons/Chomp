@@ -199,6 +199,8 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 		else
 			target = prefixData[sender][sessionID].broadcastTarget
 		end
+		-- Last but not least, fake the channel type.
+		channel = channel:gsub("^[^%:]+", "WHISPER")
 	end
 
 	if prefixData.rawCallback then
