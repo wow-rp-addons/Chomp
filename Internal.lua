@@ -186,15 +186,15 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 		if msgID == 1 then
 			local broadcastTarget, userText = text:match("^([^\009]*)\009(.*)$")
 			if broadcastTarget ~= AddOn_Chomp.NameMergedRealm(UnitFullName("player")) then
-				-- Mark session as explicitly not for us, and bail out.
-				prefixData[sender][sessionID] = false
+				-- Not for us, quit processing.
 				return
 			else
 				target = broadcastTarget
 				text = userText
 			end
-		elseif prefixData[sender][sessionID] == false then
-			-- Already determined this session ID is not for us.
+		elseif not prefixData[sender][sessionID] then
+			-- Already determined this session ID is not for us, or we came in
+			-- somewhere in the middle (and can't determine if it was for us).
 			return
 		else
 			target = prefixData[sender][sessionID].broadcastTarget
