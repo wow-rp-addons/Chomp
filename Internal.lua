@@ -479,10 +479,10 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 		ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", MessageEventFilter_SYSTEM)
 		hooksecurefunc("RestartGx", HookRestartGx)
 		HookRestartGx()
-		Internal.SameRealm = {}
-		Internal.SameRealm[(GetRealmName():gsub("%s*%-*", ""))] = true
+		self.SameRealm = {}
+		self.SameRealm[(GetRealmName():gsub("%s*%-*", ""))] = true
 		for i, realm in ipairs(GetAutoCompleteRealms()) do
-			Internal.SameRealm[(realm:gsub("%s*%-*", ""))] = true
+			self.SameRealm[(realm:gsub("%s*%-*", ""))] = true
 		end
 		if self.IncomingQueue then
 			for i, q in ipairs(self.IncomingQueue) do
