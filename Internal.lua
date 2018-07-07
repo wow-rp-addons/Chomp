@@ -44,20 +44,6 @@ local PRIORITIES = { "HIGH", "MEDIUM", "LOW" }
 
 local PRIORITY_TO_CTL = { LOW = "BULK",  MEDIUM = "NORMAL", HIGH = "ALERT" }
 
-local COMMON_EVENTS = {
-	"CHAT_MSG_CHANNEL",
-	"CHAT_MSG_GUILD",
-	"CHAT_MSG_SAY",
-	"CHAT_MSG_YELL",
-	"CHAT_MSG_EMOTE",
-	"CHAT_MSG_TEXT_EMOTE",
-	"GUILD_ROSTER_UPDATE",
-	"GUILD_TRADESKILL_UPDATE",
-	"GUILD_RANKS_UPDATE",
-	"PLAYER_GUILD_UPDATE",
-	"COMPANION_UPDATE",
-}
-
 --[[
 	INTERNAL TABLES
 ]]
@@ -373,20 +359,6 @@ local function MessageEventFilter_SYSTEM (self, event, text)
 	return true
 end
 
-local function HookRestartGx()
-	if GetCVar("gxWindow") == "0" then
-		for i, event in ipairs(COMMON_EVENTS) do
-			Internal:RegisterEvent(event)
-		end
-		Internal:Show()
-	else
-		for i, event in ipairs(COMMON_EVENTS) do
-			Internal:UnregisterEvent(event)
-		end
-		Internal:Hide()
-	end
-end
-
 local function HookSendAddonMessage(prefix, text, kind, target)
 	if kind == "WHISPER" then
 		Internal.Filter[target] = GetTime() + (select(3, GetNetStats()) * 0.001) + 5.000
@@ -445,8 +417,6 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 		hooksecurefunc("BNSendGameData", HookBNSendGameData)
 		hooksecurefunc("BNSendWhisper", HookBNSendWhisper)
 		ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", MessageEventFilter_SYSTEM)
-		hooksecurefunc("RestartGx", HookRestartGx)
-		HookRestartGx()
 		self.SameRealm = {}
 		self.SameRealm[(GetRealmName():gsub("%s*%-*", ""))] = true
 		for i, realm in ipairs(GetAutoCompleteRealms()) do
@@ -486,25 +456,6 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 		end
 		self.unloadTime = nil
 	end
-	if self:IsVisible() and self.lastDraw < GetTime() - 5 then
-		if self.hasQueue then
-			self.OnTick()
-		end
-		if self.ChatThrottleLib then
-			local f = ChatThrottleLib.Frame
-			if f:IsVisible() then
-				f:GetScript("OnUpdate")(f, 0.10)
-			end
-		end
-	end
-end)
-
-Internal:SetScript("OnUpdate", function(self, elapsed)
-	self.lastDraw = self.lastDraw + elapsed
-end)
-
-Internal:SetScript("OnShow", function(self)
-	self.lastDraw = GetTime()
 end)
 
 Internal.VERSION = VERSION
