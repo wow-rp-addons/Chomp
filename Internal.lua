@@ -27,38 +27,6 @@ end
 local Internal = __chomp_internal
 
 --[[
-	START: 8.0 BACKWARDS COMPATIBILITY
-]]
-
-local C_ChatInfo = _G.C_ChatInfo
-local xpcall = _G.xpcall
-if select(4, GetBuildInfo()) < 80000 then
-
-	C_ChatInfo = {
-		-- Implementing logged addon messages in 7.3 is pointless, just make it
-		-- a no-op.
-		SendAddonMessageLogged = function() end,
-		SendAddonMessage = _G.SendAddonMessage,
-	}
-
-	-- This is ugly and has too much overhead, but won't see much public use.
-	-- It's essentially a table.pack()/table.unpack() using upvalues to get
-	-- around the restrictions on varargs in closures.
-	function xpcall(func, errHandler, ...)
-		local n = select("#", ...)
-		local args = { ... }
-		return _G.xpcall(function()
-			func(unpack(args, 1, n))
-		end, errHandler)
-	end
-
-end
-
---[[
-	END: 8.0 BACKWARDS COMPATIBILITY
-]]
-
---[[
 	CONSTANTS
 ]]
 
