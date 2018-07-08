@@ -786,7 +786,7 @@ function AddOn_Chomp.ReportGUID(prefix, guid, customMessage)
 	end
 	local canReport, reason = AddOn_Chomp.CheckReportGUID(prefix, guid)
 	if canReport then
-		C_ChatInfo.ReportPlayer(PLAYER_REPORT_TYPE_LANGUAGE, ReportLocation, customMessage or "Objectionable content in logged addon messages.")
+		C_ChatInfo.ReportPlayer(PLAYER_REPORT_TYPE_LANGUAGE, ReportLocation, ("Report for logged addon prefix: %s. %s"):format(prefix, customMessage or "Objectionable content in logged addon messages."))
 		return true, reason
 	end
 	return false, reason
