@@ -614,9 +614,6 @@ local function BNGetIDGameAccount(name)
 		return nil
 	end
 	name = AddOn_Chomp.NameMergedRealm(name)
-	if name == AddOn_Chomp.NameMergedRealm(UnitFullName("player")) then
-		return (select(16, BNGetGameAccountInfoByGUID(UnitGUID("player"))))
-	end
 	for i = 1, select(2, BNGetNumFriends()) do
 		for j = 1, BNGetNumFriendGameAccounts(i) do
 			local active, characterName, client, realmName, realmID, faction, race, class, blank, zoneName, level, gameText, broadcastText, broadcastTime, isConnected, bnetIDGameAccount = BNGetFriendGameAccountInfo(i, j)
