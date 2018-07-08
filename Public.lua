@@ -15,15 +15,11 @@
 	CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ]]
 
-local VERSION = 0
-
-if IsLoggedIn() then
-	error(("Chomp Message Library (embedded: %s) cannot be loaded after login."):format((...)))
-elseif not __chomp_internal then
-	error(("Chomp Message Library (embedded: %s) internals not present, cannot continue loading public API."):format((...)))
-elseif (__chomp_internal.VERSION or 0) > VERSION then
+if not __chomp_internal or not __chomp_internal.LOADING then
 	return
-elseif not AddOn_Chomp then
+end
+
+if not AddOn_Chomp then
 	AddOn_Chomp = {}
 end
 

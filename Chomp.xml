@@ -3,4 +3,9 @@
 	<Script file="Public.lua"/>
 	<Script file="CTLCompat.lua"/>
 	<Script file="APIDocumentation.lua"/>
+	<Script>
+		if __chomp_internal and __chomp_internal.LOADING then
+			__chomp_internal.LOADING = nil
+		end
+	</Script>
 </Ui>
