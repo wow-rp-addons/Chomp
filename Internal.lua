@@ -140,7 +140,7 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 		if msgID == 1 then
 			local broadcastTarget, userText = text:match("^([^\127]*)\127(.*)$")
 			local ourName = AddOn_Chomp.NameMergedRealm(UnitFullName("player"))
-			if broadcastTarget ~= "" and broadcastTarget ~= ourName then
+			if sender == ourName or broadcastTarget ~= "" and broadcastTarget ~= ourName then
 				-- Not for us, quit processing.
 				return
 			else

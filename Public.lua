@@ -736,7 +736,7 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 		if prefixData.broadcastPrefix and messageOptions.allowBroadcast and UnitRealmRelationship(targetUnit) == LE_REALM_RELATION_COALESCED then
 			bitField = bit.bor(bitField, Internal.BITS.BROADCAST)
 			kind = UnitInRaid(targetUnit, LE_PARTY_CATEGORY_HOME) and not UnitInSubgroup(targetUnit, LE_PARTY_CATEGORY_HOME) and "RAID" or UnitInParty(targetUnit, LE_PARTY_CATEGORY_HOME) and "PARTY" or "INSTANCE_CHAT"
-			text = ("%s\127%s"):format(not messageOptions.universalBroadcast and AddOn_Chomp.NameMergedRealm(target) or "", text)
+			data = ("%s\127%s"):format(not messageOptions.universalBroadcast and AddOn_Chomp.NameMergedRealm(target) or "", data)
 			target = nil
 			if messageOptions.universalBroadcast then
 				queue = nil
