@@ -541,6 +541,9 @@ function AddOn_Chomp.DecodeQuotedPrintable(text)
 end
 
 function AddOn_Chomp.SafeSubString(text, first, last, textLen)
+	if type(text) ~= "string" then
+		error("AddOn_Chomp.SafeSubString(): text: expected string, got " .. type(text), 2)
+	end
 	local offset = 0
 	if not textLen then
 		textLen = #text
