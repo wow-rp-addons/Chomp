@@ -818,23 +818,23 @@ function AddOn_Chomp.UnegisterErrorCallback(callback)
 	return false
 end
 
-function AddOn_Chomp.RegisterLoadCallback(callback)
+function AddOn_Chomp.RegisterInitCallback(callback)
 	if type(callback) ~= "function" then
-		error("AddOn_Chomp.RegisterLoadCallback(): callback: expected function, got " .. type(callback), 2)
+		error("AddOn_Chomp.RegisterInitCallback(): callback: expected function, got " .. type(callback), 2)
 	end
 	if self.READY then
 		xpcall(func, geterrorhandler())
 		return true
 	end
-	if not Internal.LoadCallbacks then
-		Internal.LoadCallbacks = {}
+	if not Internal.InitCallbacks then
+		Internal.InitCallbacks = {}
 	end
-	for i, checkCallback in ipairs(Internal.LoadCallbacks) do
+	for i, checkCallback in ipairs(Internal.InitCallbacks) do
 		if callback == checkCallback then
 			return false
 		end
 	end
-	Internal.LoadCallbacks[#Internal.LoadCallbacks + 1] = callback
+	Internal.InitCallbacks[#Internal.InitCallbacks + 1] = callback
 	return true
 end
 

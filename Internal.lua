@@ -446,8 +446,8 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 			end
 		end
 		self.READY = true
-		if self.LoadCallbacks then
-			for i, func in ipairs(self.LoadCallbacks) do
+		if self.InitCallbacks then
+			for i, func in ipairs(self.InitCallbacks) do
 				xpcall(func, geterrorhandler())
 			end
 		end
