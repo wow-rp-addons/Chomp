@@ -818,6 +818,26 @@ function AddOn_Chomp.UnegisterErrorCallback(callback)
 	return false
 end
 
+function AddOn_Chomp.RegisterLoadCallback(callback)
+	if type(callback) ~= "function" then
+		error("AddOn_Chomp.RegisterLoadCallback(): callback: expected function, got " .. type(callback), 2)
+	end
+	if self.READY then
+		xpcall(func, geterrorhandler())
+		return true
+	end
+	if not Internal.LoadCallbacks then
+		Internal.LoadCallbacks = {}
+	end
+	for i, checkCallback in ipairs(Internal.LoadCallbacks) do
+		if callback == checkCallback then
+			return false
+		end
+	end
+	Internal.LoadCallbacks[#Internal.LoadCallbacks + 1] = callback
+	return true
+end
+
 function AddOn_Chomp.GetBPS()
 	return Internal.BPS, Internal.BURST
 end
