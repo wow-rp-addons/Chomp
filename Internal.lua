@@ -445,12 +445,6 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 				self:RegisterEvent("ADDON_LOADED")
 			end
 		end
-		self.READY = true
-		if self.InitCallbacks then
-			for i, func in ipairs(self.InitCallbacks) do
-				xpcall(func, geterrorhandler())
-			end
-		end
 	elseif event == "ADDON_LOADED" and ... == "Blizzard_APIDocumentation" then
 		APIDocumentation:AddDocumentationTable(self.ChompAPI)
 	elseif event == "PLAYER_LEAVING_WORLD" then
