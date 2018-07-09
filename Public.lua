@@ -822,7 +822,7 @@ function AddOn_Chomp.RegisterInitCallback(callback)
 	if type(callback) ~= "function" then
 		error("AddOn_Chomp.RegisterInitCallback(): callback: expected function, got " .. type(callback), 2)
 	end
-	if self.READY then
+	if Internal.READY then
 		xpcall(func, geterrorhandler())
 		return true
 	end
