@@ -621,9 +621,7 @@ local function BNGetIDGameAccount(name)
 			local active, characterName, client, realmName, realmID, faction, race, class, blank, zoneName, level, gameText, broadcastText, broadcastTime, isConnected, bnetIDGameAccount = BNGetFriendGameAccountInfo(i, j)
 			if isConnected and client == BNET_CLIENT_WOW then
 				local realm = realmName and realmName ~= "" and (realmName:gsub("%s*%-*", "")) or nil
-				if not realm then
-					return nil
-				elseif (not Internal.SameRealm[realm] or faction ~= UnitFactionGroup("player")) and name == AddOn_Chomp.NameMergedRealm(characterName, realm) then
+				if realm and (not Internal.SameRealm[realm] or faction ~= UnitFactionGroup("player")) and name == AddOn_Chomp.NameMergedRealm(characterName, realm) then
 					return bnetIDGameAccount
 				end
 			end
