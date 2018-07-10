@@ -489,6 +489,8 @@ function AddOn_Chomp.EncodeQuotedPrintable(text, skipExtraEncoding)
 	else
 		-- Logged messages don't permit UI escape sequences.
 		text = text:gsub("|", CharToQuotedPrintable)
+		-- They're also picky about backslashes -- ex. \\n (literal \n) fails.
+		text = text:gsub("\\", CharToQuotedPrintable)
 		-- ASCII control characters. \009 and \127 are allowed for some reason.
 		text = text:gsub("[%z\001-\008\010-\031]", CharToQuotedPrintable)
 	end
