@@ -441,7 +441,7 @@ function AddOn_Chomp.Serialize(object)
 end
 
 local EMPTY_ENV = setmetatable({}, {
-	__newindex = function() return end,
+	__newindex = function() end,
 	__metatable = false,
 })
 
@@ -541,10 +541,19 @@ end
 function AddOn_Chomp.SafeSubString(text, first, last, textLen)
 	if type(text) ~= "string" then
 		error("AddOn_Chomp.SafeSubString(): text: expected string, got " .. type(text), 2)
+	elseif type(first) ~= "number" then
+		error("AddOn_Chomp.SafeSubString(): first: expected number, got " .. type(first), 2)
+	elseif type(last) ~= "number" then
+		error("AddOn_Chomp.SafeSubString(): last: expected number, got " .. type(last), 2)
+	elseif textLen and type(textLen) ~= "number" then
+		error("AddOn_Chomp.SafeSubString(): textLen: expected number or nil, got " .. type(textLen), 2)
 	end
 	local offset = 0
 	if not textLen then
 		textLen = #text
+	end
+	if first > textLen then
+		error("AddOn_Chomp.SafeSubString(): first: starting index exceeds text length", 2)
 	end
 	if textLen > last then
 		local b3, b2, b1 = text:byte(last - 2, last)

@@ -29,6 +29,21 @@ local ChompAPI =
 	Functions = 
 	{
 		{
+			Name = "NameMergedRealm",
+			Type = "Function",
+
+			Arguments =
+			{
+				{ Name = "name", Type = "string", Nilable = false },
+				{ Name = "realmName", Type = "boolean", Nilable = true },
+			},
+
+			Returns = 
+			{
+				{ Name = "fullName", Type = "string", Nilable = false },
+			},
+		},
+		{
 			Name = "SendAddonMessage",
 			Type = "Function",
 
