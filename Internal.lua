@@ -14,7 +14,7 @@
 	CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ]]
 
-local VERSION = 1
+local VERSION = 2
 
 if IsLoggedIn() then
 	error(("Chomp Message Library (embedded: %s) cannot be loaded after login."):format((...)))
@@ -109,7 +109,7 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 
 	local method = channel:match("%:(%u+)$")
 	if method == "BATTLENET" or method == "LOGGED" then
-		text = AddOn_Chomp.DecodeQuotedPrintable(text)
+		text = AddOn_Chomp.DecodeQuotedPrintable(text, method == "LOGGED")
 	end
 
 	local bitField, sessionID, msgID, msgTotal, userText = text:match("^(%x%x%x)(%x%x%x)(%x%x%x)(%x%x%x)(.*)$")
