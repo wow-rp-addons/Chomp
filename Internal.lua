@@ -109,7 +109,7 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 
 	local method = channel:match("%:(%u+)$")
 	if method == "BATTLENET" or method == "LOGGED" then
-		text = AddOn_Chomp.DecodeQuotedPrintable(text, method == "LOGGED")
+		text = Internal.DecodeQuotedPrintable(text, method == "LOGGED")
 	end
 
 	local bitField, sessionID, msgID, msgTotal, userText = text:match("^(%x%x%x)(%x%x%x)(%x%x%x)(%x%x%x)(.*)$")
