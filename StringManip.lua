@@ -93,6 +93,8 @@ function Serialize.table(input)
 	return table.concat(t)
 end
 
+Internal.Serialize = Serialize
+
 function AddOn_Chomp.Serialize(object)
 	local objectType = type(object)
 	if not Serialize[type(object)] then

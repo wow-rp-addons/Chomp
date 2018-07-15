@@ -394,7 +394,7 @@ function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, prefixSettings)
 		}
 		local validTypes = prefixSettings.validTypes or DEFAULT_SETTINGS.validTypes
 		prefixData.validTypes = {}
-		for dataType, func in pairs(Serialize) do
+		for dataType, func in pairs(Internal.Serialize) do
 			if validTypes[dataType] then
 				prefixData.validTypes[dataType] = true
 			end
