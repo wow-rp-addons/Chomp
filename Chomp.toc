@@ -2,7 +2,7 @@
 ## X-Interface: 80000
 ## Title: Chomp Message Library
 ## Author: Justin Snelgrove
-## Version: 1
+## Version: 2
 ## X-WoW-Version: 8.0.1
 ## X-WoW-Build: 27026
 ## Notes: Battle.net and in-game messaging library with smart addon whispers.

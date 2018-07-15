@@ -475,7 +475,31 @@ local function TooManyContinuations(s1, s2)
 	return s1 .. (s2:gsub(".", CharToQuotedPrintable))
 end
 
-function AddOn_Chomp.EncodeQuotedPrintable(text, skipExtraEncoding)
+function AddOn_Chomp.CheckLoggedContents(text)
+	if type(text) ~= "string" then
+		error("AddOn_Chomp.CheckLoggedContents(): text: expected string, got " .. type(text), 2)
+	end
+	if text:find("[%z\001-\009\011-\031\127]") then
+		return false, "ASCII_CONTROL"
+	elseif text:find("\229\141[\141\144]") then
+		return false, "BLIZZ_ABUSIVE"
+	elseif text:find("[\192\193\245-\255]") then
+		return false, "UTF8_UNUSED_BYTE"
+	elseif text:find("[\194-\244]+[\194-\244]") then
+		return false, "UTF8_MULTIPLE_LEADING"
+	elseif text:find("\224[\128-\159][\128-\191]") or text:find("\240[\128-\143][\128-\191][\128-\191]") or text:find("\244[\143-\191][\128-\191][\128-\191]") then
+		return false, "UTF8_MALFORMED"
+	elseif text:find("[\194-\244]%f[^\128-\191\194-\244]") or text:find("[\224-\244][\128-\191]%f[^\128-\191]") or text:find("[\240-\244][\128-\191][\128-\191]%f[^\128-\191]") then
+		return false, "UTF8_MISSING_CONTINUATION"
+	elseif text:find("%f[\128-\191\194-\244][\128-\191]+") then
+		return false, "UTF8_MISSING_LEADING"
+	elseif text:find("([\194-\223][\128-\191])([\128-\191]+)") or text:find("([\224-\239][\128-\191][\128-\191])([\128-\191]+)") or text:find("([\240-\244][\128-\191][\128-\191][\128-\191])([\128-\191]+)") then
+		return false, "UTF8_EXTRA_CONTINUATION"
+	end
+	return true, nil
+end
+
+function AddOn_Chomp.EncodeQuotedPrintable(text, permitBinary)
 	if type(text) ~= "string" then
 		error("AddOn_Chomp.EncodeQuotedPrintable(): text: expected string, got " .. type(text), 2)
 	end
@@ -483,47 +507,47 @@ function AddOn_Chomp.EncodeQuotedPrintable(text, skipExtraEncoding)
 	-- First, the quoted-printable escape character.
 	text = text:gsub("=", CharToQuotedPrintable)
 
-	if skipExtraEncoding then
+	if permitBinary then
 		-- Just NUL, which never works normally.
 		text = text:gsub("%z", CharToQuotedPrintable)
+
+		-- Bytes not used in UTF-8 ever.
+		text = text:gsub("[\192\193\245-\255]", CharToQuotedPrintable)
+	
+		-- Multiple leading bytes.
+		text = text:gsub("[\194-\244]+[\194-\244]", function(s)
+			return (s:gsub(".", CharToQuotedPrintable, #s - 1))
+		end)
+	
+		--- Unicode 11.0.0, Table 3-7 malformed UTF-8 byte sequences.
+		text = text:gsub("\224[\128-\159][\128-\191]", StringToQuotedPrintable)
+		text = text:gsub("\240[\128-\143][\128-\191][\128-\191]", StringToQuotedPrintable)
+		text = text:gsub("\244[\143-\191][\128-\191][\128-\191]", StringToQuotedPrintable)
+	
+		-- 2-4-byte leading bytes without enough continuation bytes.
+		text = text:gsub("[\194-\244]%f[^\128-\191\194-\244]", CharToQuotedPrintable)
+		-- 3-4-byte leading bytes without enough continuation bytes.
+		text = text:gsub("[\224-\244][\128-\191]%f[^\128-\191]", StringToQuotedPrintable)
+		-- 4-byte leading bytes without enough continuation bytes.
+		text = text:gsub("[\240-\244][\128-\191][\128-\191]%f[^\128-\191]", StringToQuotedPrintable)
+	
+		-- Continuation bytes without leading bytes.
+		text = text:gsub("%f[\128-\191\194-\244][\128-\191]+", StringToQuotedPrintable)
+	
+		-- 2-byte character with too many continuation bytes
+		text = text:gsub("([\194-\223][\128-\191])([\128-\191]+)", TooManyContinuations)
+		-- 3-byte character with too many continuation bytes
+		text = text:gsub("([\224-\239][\128-\191][\128-\191])([\128-\191]+)", TooManyContinuations)
+		-- 4-byte character with too many continuation bytes
+		text = text:gsub("([\240-\244][\128-\191][\128-\191][\128-\191])([\128-\191]+)", TooManyContinuations)
 	else
 		-- Logged messages don't permit UI escape sequences.
 		text = text:gsub("|", CharToQuotedPrintable)
 		-- They're also picky about backslashes -- ex. \\n (literal \n) fails.
 		text = text:gsub("\\", CharToQuotedPrintable)
-		-- ASCII control characters. \009 and \127 are allowed for some reason.
-		text = text:gsub("[%z\001-\008\010-\031]", CharToQuotedPrintable)
+		-- Newlines are truly necessary but not permitted.
+		text = text:gsub("\010", CharToQuotedPrintable)
 	end
-
-	-- Bytes not used in UTF-8 ever.
-	text = text:gsub("[\192\193\245-\255]", CharToQuotedPrintable)
-
-	-- Multiple leading bytes.
-	text = text:gsub("[\194-\244]+[\194-\244]", function(s)
-		return (s:gsub(".", CharToQuotedPrintable, #s - 1))
-	end)
-
-	--- Unicode 11.0.0, Table 3-7 malformed UTF-8 byte sequences.
-	text = text:gsub("\224[\128-\159][\128-\191]", StringToQuotedPrintable)
-	text = text:gsub("\240[\128-\143][\128-\191][\128-\191]", StringToQuotedPrintable)
-	text = text:gsub("\244[\143-\191][\128-\191][\128-\191]", StringToQuotedPrintable)
-
-	-- 2-4-byte leading bytes without enough continuation bytes.
-	text = text:gsub("[\194-\244]%f[^\128-\191\194-\244]", CharToQuotedPrintable)
-	-- 3-4-byte leading bytes without enough continuation bytes.
-	text = text:gsub("[\224-\244][\128-\191]%f[^\128-\191]", StringToQuotedPrintable)
-	-- 4-byte leading bytes without enough continuation bytes.
-	text = text:gsub("[\240-\244][\128-\191][\128-\191]%f[^\128-\191]", StringToQuotedPrintable)
-
-	-- Continuation bytes without leading bytes.
-	text = text:gsub("%f[\128-\191\194-\244][\128-\191]+", StringToQuotedPrintable)
-
-	-- 2-byte character with too many continuation bytes
-	text = text:gsub("([\194-\223][\128-\191])([\128-\191]+)", TooManyContinuations)
-	-- 3-byte character with too many continuation bytes
-	text = text:gsub("([\224-\239][\128-\191][\128-\191])([\128-\191]+)", TooManyContinuations)
-	-- 4-byte character with too many continuation bytes
-	text = text:gsub("([\240-\244][\128-\191][\128-\191][\128-\191])([\128-\191]+)", TooManyContinuations)
 
 	return text
 end
@@ -720,6 +744,9 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 	if messageOptions.serialize then
 		bitField = bit.bor(bitField, Internal.BITS.SERIALIZE)
 		data = AddOn_Chomp.Serialize(data)
+	end
+	if not messageOptions.binaryBlob and not AddOn_Chomp.CheckLoggedContents(data) then
+		error("AddOn_Chomp.SmartAddonMessage(): data: messageOptions.binaryBlob not specified, but binary sequences found in contents", 2)
 	end
 
 	target = AddOn_Chomp.NameMergedRealm(target)

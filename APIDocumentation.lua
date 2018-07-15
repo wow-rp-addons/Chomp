@@ -158,13 +158,28 @@ local ChompAPI =
 			},
 		},
 		{
+			Name = "CheckLoggedContents",
+			Type = "Function",
+
+			Arguments =
+			{
+				{ Name = "text", Type = "string", Nilable = false },
+			},
+
+			Returns = 
+			{
+				{ Name = "permitted", Type = "boolean", Nilable = false },
+				{ Name = "reason", Type = "string", Nilable = true },
+			},
+		},
+		{
 			Name = "EncodeQuotedPrintable",
 			Type = "Function",
 
 			Arguments =
 			{
 				{ Name = "text", Type = "string", Nilable = false },
-				{ Name = "skipAsciiControl", Type = "boolean", Nilable = true },
+				{ Name = "permitBinary", Type = "boolean", Nilable = true },
 			},
 
 			Returns = 

@@ -14,7 +14,7 @@
 	CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ]]
 
-local VERSION = 1
+local VERSION = 2
 
 if IsLoggedIn() then
 	error(("Chomp Message Library (embedded: %s) cannot be loaded after login."):format((...)))
@@ -119,6 +119,12 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 	msgTotal = msgTotal and tonumber(msgTotal, 16) or 1
 	if userText then
 		text = userText
+	end
+
+	if method == "LOGGED" and not AddOn_Chomp.CheckLoggedContents(text) then
+		-- This should have been rejected at send time, someone's using an old
+		-- or modified copy of Chomp.
+		return
 	end
 
 	if bit.bor(bitField, Internal.KNOWN_BITS) ~= Internal.KNOWN_BITS or bit.band(bitField, Internal.BITS.DEPRECATE) == Internal.BITS.DEPRECATE then
