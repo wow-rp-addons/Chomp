@@ -144,12 +144,16 @@ function AddOn_Chomp.CheckLoggedContents(text)
 		return false, "UTF8_MULTIPLE_LEADING"
 	elseif text:find("\224[\128-\159][\128-\191]") or text:find("\240[\128-\143][\128-\191][\128-\191]") or text:find("\244[\143-\191][\128-\191][\128-\191]") then
 		return false, "UTF8_MALFORMED"
+	elseif text:find("\237\158[\154-\191]") or text:find("\237[\159-\191][\128-\191]") then
+		return false, "UTF16_RESERVED"
 	elseif text:find("[\194-\244]%f[^\128-\191\194-\244]") or text:find("[\224-\244][\128-\191]%f[^\128-\191]") or text:find("[\240-\244][\128-\191][\128-\191]%f[^\128-\191]") then
 		return false, "UTF8_MISSING_CONTINUATION"
 	elseif text:find("%f[\128-\191\194-\244][\128-\191]+") then
 		return false, "UTF8_MISSING_LEADING"
 	elseif text:find("[\194-\223][\128-\191][\128-\191]+") or text:find("[\224-\239][\128-\191][\128-\191][\128-\191]+") or text:find("[\240-\244][\128-\191][\128-\191][\128-\191][\128-\191]+") then
 		return false, "UTF8_EXTRA_CONTINUATION"
+	elseif text:find("\239\191[\190\191]") then
+		return false, "UNICODE_INVALID"
 	end
 	return true, nil
 end
@@ -176,27 +180,34 @@ function Internal.EncodeQuotedPrintable(text, restrictBinary)
 
 		-- Bytes not used in UTF-8 ever.
 		text = text:gsub("[\192\193\245-\255]", CharToQuotedPrintable)
-	
+
 		-- Multiple leading bytes.
 		text = text:gsub("[\194-\244]+[\194-\244]", function(s)
 			return (s:gsub(".", CharToQuotedPrintable, #s - 1))
 		end)
-	
+
 		--- Unicode 11.0.0, Table 3-7 malformed UTF-8 byte sequences.
 		text = text:gsub("\224[\128-\159][\128-\191]", StringToQuotedPrintable)
 		text = text:gsub("\240[\128-\143][\128-\191][\128-\191]", StringToQuotedPrintable)
 		text = text:gsub("\244[\143-\191][\128-\191][\128-\191]", StringToQuotedPrintable)
-	
+
+		-- UTF-16 reserved codepoints
+		text = text:gsub("\237\158[\154-\191]", StringToQuotedPrintable)
+		text = text:gsub("\237[\159-\191][\128-\191]", StringToQuotedPrintable)
+
+		-- Unicode invalid codepoints
+		text = text:gsub("\239\191[\190\191]", StringToQuotedPrintable)
+
 		-- 2-4-byte leading bytes without enough continuation bytes.
 		text = text:gsub("[\194-\244]%f[^\128-\191\194-\244]", CharToQuotedPrintable)
 		-- 3-4-byte leading bytes without enough continuation bytes.
 		text = text:gsub("[\224-\244][\128-\191]%f[^\128-\191]", StringToQuotedPrintable)
 		-- 4-byte leading bytes without enough continuation bytes.
 		text = text:gsub("[\240-\244][\128-\191][\128-\191]%f[^\128-\191]", StringToQuotedPrintable)
-	
+
 		-- Continuation bytes without leading bytes.
 		text = text:gsub("%f[\128-\191\194-\244][\128-\191]+", StringToQuotedPrintable)
-	
+
 		-- 2-byte character with too many continuation bytes
 		text = text:gsub("([\194-\223][\128-\191])([\128-\191]+)", TooManyContinuations)
 		-- 3-byte character with too many continuation bytes
@@ -244,6 +255,13 @@ function AddOn_Chomp.EncodeQuotedPrintable(text)
 	text = text:gsub("\224[\128-\159][\128-\191]", StringToQuotedPrintable)
 	text = text:gsub("\240[\128-\143][\128-\191][\128-\191]", StringToQuotedPrintable)
 	text = text:gsub("\244[\143-\191][\128-\191][\128-\191]", StringToQuotedPrintable)
+
+	-- UTF-16 reserved codepoints
+	text = text:gsub("\237\158[\154-\191]", StringToQuotedPrintable)
+	text = text:gsub("\237[\159-\191][\128-\191]", StringToQuotedPrintable)
+
+	-- Unicode invalid codepoints
+	text = text:gsub("\239\191[\190\191]", StringToQuotedPrintable)
 
 	-- 2-4-byte leading bytes without enough continuation bytes.
 	text = text:gsub("[\194-\244]%f[^\128-\191\194-\244]", CharToQuotedPrintable)
