@@ -27,7 +27,7 @@ local Internal = __chomp_internal
 
 local DEFAULT_PRIORITY = "MEDIUM"
 local PRIORITIES_HASH = { HIGH = true, MEDIUM = true, LOW = true }
-local OVERHEAD = 24
+local OVERHEAD = 27
 
 -- Realm part matching is greedy, as realm names will rarely have dashes, but
 -- player names will never.
@@ -352,8 +352,8 @@ function AddOn_Chomp.BNSendWhisper(bnetIDAccount, text, priority, queue, callbac
 	end
 
 	local length = #text
-	if length > 255 then
-		error("AddOn_Chomp.BNSendWhisper(): text length cannot exceed 255 bytes", 2)
+	if length > 997 then
+		error("AddOn_Chomp.BNSendWhisper(): text length cannot exceed 997 bytes", 2)
 	end
 
 	if not IsLoggedIn() then
