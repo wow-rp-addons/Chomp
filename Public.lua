@@ -470,18 +470,6 @@ function AddOn_Chomp.Deserialize(text)
 	return ret
 end
 
-local function CharToQuotedPrintable(c)
-	return ("=%02X"):format(c:byte())
-end
-
-local function StringToQuotedPrintable(s)
-	return (s:gsub(".", CharToQuotedPrintable))
-end
-
-local function TooManyContinuations(s1, s2)
-	return s1 .. (s2:gsub(".", CharToQuotedPrintable))
-end
-
 function AddOn_Chomp.CheckLoggedContents(text)
 	if type(text) ~= "string" then
 		error("AddOn_Chomp.CheckLoggedContents(): text: expected string, got " .. type(text), 2)
@@ -506,11 +494,19 @@ function AddOn_Chomp.CheckLoggedContents(text)
 	return true, nil
 end
 
-function AddOn_Chomp.EncodeQuotedPrintable(text, restrictBinary)
-	if type(text) ~= "string" then
-		error("AddOn_Chomp.EncodeQuotedPrintable(): text: expected string, got " .. type(text), 2)
-	end
+local function CharToQuotedPrintable(c)
+	return ("=%02X"):format(c:byte())
+end
 
+local function StringToQuotedPrintable(s)
+	return (s:gsub(".", CharToQuotedPrintable))
+end
+
+local function TooManyContinuations(s1, s2)
+	return s1 .. (s2:gsub(".", CharToQuotedPrintable))
+end
+
+function Internal.EncodeQuotedPrintable(text, restrictBinary)
 	-- First, the quoted-printable escape character.
 	text = text:gsub("=", CharToQuotedPrintable)
 
@@ -559,6 +555,56 @@ function AddOn_Chomp.EncodeQuotedPrintable(text, restrictBinary)
 	return text
 end
 
+function AddOn_Chomp.EncodeQuotedPrintable(text)
+	if type(text) ~= "string" then
+		error("AddOn_Chomp.EncodeQuotedPrintable(): text: expected string, got " .. type(text), 2)
+	end
+
+	-- First, the quoted-printable escape character.
+	text = text:gsub("=", CharToQuotedPrintable)
+
+	-- Logged messages don't permit UI escape sequences.
+	text = text:gsub("|", CharToQuotedPrintable)
+	-- They're also picky about backslashes -- ex. \\n (literal \n) fails.
+	text = text:gsub("\\", CharToQuotedPrintable)
+	-- Some characters are considered abusive-by-default by Blizzard.
+	text = text:gsub("\229\141[\141\144]", StringToQuotedPrintable)
+	-- ASCII control characters. \009 and \127 are allowed for some reason.
+	text = text:gsub("[%z\001-\008\010-\031]", CharToQuotedPrintable)
+
+	-- Bytes not used in UTF-8 ever.
+	text = text:gsub("[\192\193\245-\255]", CharToQuotedPrintable)
+
+	-- Multiple leading bytes.
+	text = text:gsub("[\194-\244]+[\194-\244]", function(s)
+		return (s:gsub(".", CharToQuotedPrintable, #s - 1))
+	end)
+
+	--- Unicode 11.0.0, Table 3-7 malformed UTF-8 byte sequences.
+	text = text:gsub("\224[\128-\159][\128-\191]", StringToQuotedPrintable)
+	text = text:gsub("\240[\128-\143][\128-\191][\128-\191]", StringToQuotedPrintable)
+	text = text:gsub("\244[\143-\191][\128-\191][\128-\191]", StringToQuotedPrintable)
+
+	-- 2-4-byte leading bytes without enough continuation bytes.
+	text = text:gsub("[\194-\244]%f[^\128-\191\194-\244]", CharToQuotedPrintable)
+	-- 3-4-byte leading bytes without enough continuation bytes.
+	text = text:gsub("[\224-\244][\128-\191]%f[^\128-\191]", StringToQuotedPrintable)
+	-- 4-byte leading bytes without enough continuation bytes.
+	text = text:gsub("[\240-\244][\128-\191][\128-\191]%f[^\128-\191]", StringToQuotedPrintable)
+
+	-- Continuation bytes without leading bytes.
+	text = text:gsub("%f[\128-\191\194-\244][\128-\191]+", StringToQuotedPrintable)
+
+	-- 2-byte character with too many continuation bytes
+	text = text:gsub("([\194-\223][\128-\191])([\128-\191]+)", TooManyContinuations)
+	-- 3-byte character with too many continuation bytes
+	text = text:gsub("([\224-\239][\128-\191][\128-\191])([\128-\191]+)", TooManyContinuations)
+	-- 4-byte character with too many continuation bytes
+	text = text:gsub("([\240-\244][\128-\191][\128-\191][\128-\191])([\128-\191]+)", TooManyContinuations)
+
+	return text
+end
+
 local function DecodeAnyByte(b)
 	return string.char(tonumber(b, 16))
 end
@@ -572,11 +618,16 @@ local function DecodeSafeByte(b)
 	end
 end
 
-function AddOn_Chomp.DecodeQuotedPrintable(text, restrictBinary)
+function Internal.DecodeQuotedPrintable(text, restrictBinary)
+	local decodedText = text:gsub("=(%x%x)", not restrictBinary and DecodeAnyByte or DecodeSafeByte)
+	return decodedText
+end
+
+function AddOn_Chomp.DecodeQuotedPrintable(text)
 	if type(text) ~= "string" then
 		error("AddOn_Chomp.DecodeQuotedPrintable(): text: expected string, got " .. type(text), 2)
 	end
-	local decodedText = text:gsub("=(%x%x)", not restrictBinary and DecodeAnyByte or DecodeSafeByte)
+	local decodedText = text:gsub("=(%x%x)", DecodeAnyByte)
 	return decodedText
 end
 
@@ -778,7 +829,7 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 		-- crossrealm targets.
 		local bnetIDGameAccount = BNGetIDGameAccount(target)
 		if bnetIDGameAccount then
-			ToBattleNet(bitField, prefix, AddOn_Chomp.EncodeQuotedPrintable(data, false), kind, bnetIDGameAccount, messageOptions.priority, messageOptions.queue or queue)
+			ToBattleNet(bitField, prefix, Internal.EncodeQuotedPrintable(data, false), kind, bnetIDGameAccount, messageOptions.priority, messageOptions.queue or queue)
 			sentBnet = true
 			return "BATTLENET"
 		end
@@ -797,7 +848,7 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 		end
 	end
 	if not messageOptions.binaryBlob then
-		ToInGameLogged(bitField, prefix, AddOn_Chomp.EncodeQuotedPrintable(data, true), kind, target, messageOptions.priority, messageOptions.queue or queue)
+		ToInGameLogged(bitField, prefix, Internal.EncodeQuotedPrintable(data, true), kind, target, messageOptions.priority, messageOptions.queue or queue)
 		sentLogged = true
 		return "LOGGED"
 	end

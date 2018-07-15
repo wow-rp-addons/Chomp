@@ -179,12 +179,11 @@ local ChompAPI =
 			Arguments =
 			{
 				{ Name = "text", Type = "string", Nilable = false },
-				{ Name = "restrictBinary", Type = "boolean", Nilable = true },
 			},
 
 			Returns = 
 			{
-				{ Name = "encodedText", Type = "string", Nilable = false },
+				{ Name = "encodedText", Type = "string", Nilable = false, Documentation = { "WARNING: This function encodes EVERYTHING known to be potentially problematic in any chat type. It should let you send arbitrary binary over logged messages, but it explicitly circumvents some Blizzard protections on glyphs considered abusive. Use at your own risk." } },
 			},
 		},
 		{
@@ -194,12 +193,11 @@ local ChompAPI =
 			Arguments =
 			{
 				{ Name = "text", Type = "string", Nilable = false },
-				{ Name = "restrictBinary", Type = "boolean", Nilable = true },
 			},
 
 			Returns = 
 			{
-				{ Name = "decodedText", Type = "string", Nilable = false },
+				{ Name = "decodedText", Type = "string", Nilable = false, Documentation = { "WARNING: This function encodes EVERYTHING known to be potentially problematic in any chat type. It should let you send arbitrary binary over logged messages, but it explicitly circumvents some Blizzard protections on glyphs considered abusive. Use at your own risk." } },
 			},
 		},
 		{
