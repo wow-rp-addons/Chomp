@@ -547,14 +547,14 @@ function AddOn_Chomp.EncodeQuotedPrintable(text, restrictBinary)
 		text = text:gsub("([\224-\239][\128-\191][\128-\191])([\128-\191]+)", TooManyContinuations)
 		-- 4-byte character with too many continuation bytes
 		text = text:gsub("([\240-\244][\128-\191][\128-\191][\128-\191])([\128-\191]+)", TooManyContinuations)
+	else
+		-- Binary-restricted messages don't permit UI escape sequences.
+		text = text:gsub("|", CharToQuotedPrintable)
+		-- They're also picky about backslashes -- ex. \\n (literal \n) fails.
+		text = text:gsub("\\", CharToQuotedPrintable)
+		-- Newlines are truly necessary but not permitted.
+		text = text:gsub("\010", CharToQuotedPrintable)
 	end
-
-	-- Logged messages don't permit UI escape sequences.
-	text = text:gsub("|", CharToQuotedPrintable)
-	-- They're also picky about backslashes -- ex. \\n (literal \n) fails.
-	text = text:gsub("\\", CharToQuotedPrintable)
-	-- Newlines are truly necessary but not permitted.
-	text = text:gsub("\010", CharToQuotedPrintable)
 
 	return text
 end
@@ -778,7 +778,7 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 		-- crossrealm targets.
 		local bnetIDGameAccount = BNGetIDGameAccount(target)
 		if bnetIDGameAccount then
-			ToBattleNet(bitField, prefix, AddOn_Chomp.EncodeQuotedPrintable(data, true), kind, bnetIDGameAccount, messageOptions.priority, messageOptions.queue or queue)
+			ToBattleNet(bitField, prefix, AddOn_Chomp.EncodeQuotedPrintable(data, false), kind, bnetIDGameAccount, messageOptions.priority, messageOptions.queue or queue)
 			sentBnet = true
 			return "BATTLENET"
 		end
@@ -797,7 +797,7 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 		end
 	end
 	if not messageOptions.binaryBlob then
-		ToInGameLogged(bitField, prefix, AddOn_Chomp.EncodeQuotedPrintable(data, false), kind, target, messageOptions.priority, messageOptions.queue or queue)
+		ToInGameLogged(bitField, prefix, AddOn_Chomp.EncodeQuotedPrintable(data, true), kind, target, messageOptions.priority, messageOptions.queue or queue)
 		sentLogged = true
 		return "LOGGED"
 	end
