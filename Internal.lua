@@ -26,6 +26,10 @@ if not __chomp_internal then
 	__chomp_internal = CreateFrame("Frame")
 end
 
+if not AddOn_Chomp then
+	AddOn_Chomp = {}
+end
+
 __chomp_internal.LOADING = true
 
 local Internal = __chomp_internal

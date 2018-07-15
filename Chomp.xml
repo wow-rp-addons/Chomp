@@ -1,6 +1,7 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
 	<Script file="Internal.lua"/>
 	<Script file="Public.lua"/>
+	<Script file="StringManip.lua"/>
 	<Script file="CTLCompat.lua"/>
 	<Script file="APIDocumentation.lua"/>
 	<Script>
