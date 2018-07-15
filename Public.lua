@@ -29,6 +29,13 @@ local DEFAULT_PRIORITY = "MEDIUM"
 local PRIORITIES_HASH = { HIGH = true, MEDIUM = true, LOW = true }
 local OVERHEAD = 27
 
+local SAFE_BYTES = {
+	[10] = true, -- newline
+	[61] = true, -- equals
+	[92] = true, -- backslash
+	[124] = true, -- pipe
+}
+
 -- Realm part matching is greedy, as realm names will rarely have dashes, but
 -- player names will never.
 local FULL_PLAYER_SPLIT = FULL_PLAYER_NAME:gsub("-", "%%%%-"):format("^(.-)", "(.+)$")
@@ -493,13 +500,13 @@ function AddOn_Chomp.CheckLoggedContents(text)
 		return false, "UTF8_MISSING_CONTINUATION"
 	elseif text:find("%f[\128-\191\194-\244][\128-\191]+") then
 		return false, "UTF8_MISSING_LEADING"
-	elseif text:find("([\194-\223][\128-\191])([\128-\191]+)") or text:find("([\224-\239][\128-\191][\128-\191])([\128-\191]+)") or text:find("([\240-\244][\128-\191][\128-\191][\128-\191])([\128-\191]+)") then
+	elseif text:find("[\194-\223][\128-\191][\128-\191]+") or text:find("[\224-\239][\128-\191][\128-\191][\128-\191]+") or text:find("[\240-\244][\128-\191][\128-\191][\128-\191][\128-\191]+") then
 		return false, "UTF8_EXTRA_CONTINUATION"
 	end
 	return true, nil
 end
 
-function AddOn_Chomp.EncodeQuotedPrintable(text, permitBinary)
+function AddOn_Chomp.EncodeQuotedPrintable(text, restrictBinary)
 	if type(text) ~= "string" then
 		error("AddOn_Chomp.EncodeQuotedPrintable(): text: expected string, got " .. type(text), 2)
 	end
@@ -507,7 +514,7 @@ function AddOn_Chomp.EncodeQuotedPrintable(text, permitBinary)
 	-- First, the quoted-printable escape character.
 	text = text:gsub("=", CharToQuotedPrintable)
 
-	if permitBinary then
+	if not restrictBinary then
 		-- Just NUL, which never works normally.
 		text = text:gsub("%z", CharToQuotedPrintable)
 
@@ -540,25 +547,36 @@ function AddOn_Chomp.EncodeQuotedPrintable(text, permitBinary)
 		text = text:gsub("([\224-\239][\128-\191][\128-\191])([\128-\191]+)", TooManyContinuations)
 		-- 4-byte character with too many continuation bytes
 		text = text:gsub("([\240-\244][\128-\191][\128-\191][\128-\191])([\128-\191]+)", TooManyContinuations)
-	else
-		-- Logged messages don't permit UI escape sequences.
-		text = text:gsub("|", CharToQuotedPrintable)
-		-- They're also picky about backslashes -- ex. \\n (literal \n) fails.
-		text = text:gsub("\\", CharToQuotedPrintable)
-		-- Newlines are truly necessary but not permitted.
-		text = text:gsub("\010", CharToQuotedPrintable)
 	end
+
+	-- Logged messages don't permit UI escape sequences.
+	text = text:gsub("|", CharToQuotedPrintable)
+	-- They're also picky about backslashes -- ex. \\n (literal \n) fails.
+	text = text:gsub("\\", CharToQuotedPrintable)
+	-- Newlines are truly necessary but not permitted.
+	text = text:gsub("\010", CharToQuotedPrintable)
 
 	return text
 end
 
-function AddOn_Chomp.DecodeQuotedPrintable(text)
+local function DecodeAnyByte(b)
+	return string.char(tonumber(b, 16))
+end
+
+local function DecodeSafeByte(b)
+	local byteNum = tonumber(b, 16)
+	if SAFE_BYTES[byteNum] then
+		return string.char(byteNum)
+	else
+		return ("=%02X"):format(byteNum)
+	end
+end
+
+function AddOn_Chomp.DecodeQuotedPrintable(text, restrictBinary)
 	if type(text) ~= "string" then
 		error("AddOn_Chomp.DecodeQuotedPrintable(): text: expected string, got " .. type(text), 2)
 	end
-	local decodedText = text:gsub("=(%x%x)", function(b)
-		return string.char(tonumber(b, 16))
-	end)
+	local decodedText = text:gsub("=(%x%x)", not restrictBinary and DecodeAnyByte or DecodeSafeByte)
 	return decodedText
 end
 
@@ -745,8 +763,11 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 		bitField = bit.bor(bitField, Internal.BITS.SERIALIZE)
 		data = AddOn_Chomp.Serialize(data)
 	end
-	if not messageOptions.binaryBlob and not AddOn_Chomp.CheckLoggedContents(data) then
-		error("AddOn_Chomp.SmartAddonMessage(): data: messageOptions.binaryBlob not specified, but binary sequences found in contents", 2)
+	if not messageOptions.binaryBlob then
+		local permitted, reason = AddOn_Chomp.CheckLoggedContents(data)
+		if not permitted then
+			error(("AddOn_Chomp.SmartAddonMessage(): data: messageOptions.binaryBlob not specified, but disallowed sequences found, code: %s"):format(reason), 2)
+		end
 	end
 
 	target = AddOn_Chomp.NameMergedRealm(target)

@@ -109,7 +109,7 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 
 	local method = channel:match("%:(%u+)$")
 	if method == "BATTLENET" or method == "LOGGED" then
-		text = AddOn_Chomp.DecodeQuotedPrintable(text)
+		text = AddOn_Chomp.DecodeQuotedPrintable(text, method == "LOGGED")
 	end
 
 	local bitField, sessionID, msgID, msgTotal, userText = text:match("^(%x%x%x)(%x%x%x)(%x%x%x)(%x%x%x)(.*)$")
@@ -119,12 +119,6 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 	msgTotal = msgTotal and tonumber(msgTotal, 16) or 1
 	if userText then
 		text = userText
-	end
-
-	if method == "LOGGED" and not AddOn_Chomp.CheckLoggedContents(text) then
-		-- This should have been rejected at send time, someone's using an old
-		-- or modified copy of Chomp.
-		return
 	end
 
 	if bit.bor(bitField, Internal.KNOWN_BITS) ~= Internal.KNOWN_BITS or bit.band(bitField, Internal.BITS.DEPRECATE) == Internal.BITS.DEPRECATE then

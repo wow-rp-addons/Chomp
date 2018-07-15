@@ -179,7 +179,7 @@ local ChompAPI =
 			Arguments =
 			{
 				{ Name = "text", Type = "string", Nilable = false },
-				{ Name = "permitBinary", Type = "boolean", Nilable = true },
+				{ Name = "restrictBinary", Type = "boolean", Nilable = true },
 			},
 
 			Returns = 
@@ -194,6 +194,7 @@ local ChompAPI =
 			Arguments =
 			{
 				{ Name = "text", Type = "string", Nilable = false },
+				{ Name = "restrictBinary", Type = "boolean", Nilable = true },
 			},
 
 			Returns = 
