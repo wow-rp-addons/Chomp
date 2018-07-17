@@ -439,13 +439,13 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 		end
 		if self.IncomingQueue then
 			for i, q in ipairs(self.IncomingQueue) do
-				HandleMessageIn(table.unpack(q, 1, 4))
+				HandleMessageIn(unpack(q, 1, 4))
 			end
 			self.IncomingQueue = nil
 		end
 		if self.OutgoingQueue then
 			for i, q in ipairs(self.OutgoingQueue) do
-				AddOn_Chomp[q.f](table.unpack(q, 1, q.n))
+				AddOn_Chomp[q.f](unpack(q, 1, q.n))
 			end
 			self.OutgoingQueue = nil
 		end
