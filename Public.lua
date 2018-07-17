@@ -559,11 +559,11 @@ local ReportLocation = CreateFromMixins(PlayerLocationMixin)
 function AddOn_Chomp.CheckReportGUID(prefix, guid)
 	local prefixData = Internal.Prefixes[prefix]
 	if type(prefix) ~= "string" then
-		error("AddOn_Chomp.ReportTarget(): prefix: expected string, got " .. type(prefix), 2)
+		error("AddOn_Chomp.CheckReportGUID(): prefix: expected string, got " .. type(prefix), 2)
 	elseif type(guid) ~= "string" then
-		error("AddOn_Chomp.ReportTarget(): guid: expected string, got " .. type(guid), 2)
+		error("AddOn_Chomp.CheckReportGUID(): guid: expected string, got " .. type(guid), 2)
 	elseif not prefixData then
-		error("AddOn_Chomp.ReportTarget(): prefix: prefix has not been registered with Chomp", 2)
+		error("AddOn_Chomp.CheckReportGUID(): prefix: prefix has not been registered with Chomp", 2)
 	end
 	local success, class, classID, race, raceID, gender, name, realm = pcall(GetPlayerInfoByGUID, guid)
 	if not success then
