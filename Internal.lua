@@ -433,9 +433,9 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 		hooksecurefunc("BNSendWhisper", HookBNSendWhisper)
 		ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", MessageEventFilter_SYSTEM)
 		self.SameRealm = {}
-		self.SameRealm[(GetRealmName():gsub("%s*%-*", ""))] = true
+		self.SameRealm[(GetRealmName():gsub("[%s%-]", ""))] = true
 		for i, realm in ipairs(GetAutoCompleteRealms()) do
-			self.SameRealm[(realm:gsub("%s*%-*", ""))] = true
+			self.SameRealm[(realm:gsub("[%s%-]", ""))] = true
 		end
 		if self.IncomingQueue then
 			for i, q in ipairs(self.IncomingQueue) do

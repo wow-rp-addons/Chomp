@@ -51,7 +51,7 @@ function AddOn_Chomp.NameMergedRealm(name, realm)
 	elseif name:find(FULL_PLAYER_FIND) then
 		error("AddOn_Chomp.NameMergedRealm(): name already has a realm name, but realm name also provided")
 	end
-	return FULL_PLAYER_NAME:format(name, (realm:gsub("%s*%-*", "")))
+	return FULL_PLAYER_NAME:format(name, (realm:gsub("[%s%-]", "")))
 end
 
 local Serialize = {}
