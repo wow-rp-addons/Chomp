@@ -57,6 +57,9 @@ function ChatThrottleLib:SendAddonMessage(priorityName, prefix, text, kind, targ
 	elseif #text > 255 then
 		error("ChatThrottleLib:SendAddonMessage(): message length cannot exceed 255 bytes", 2)
 	end
+	if kind == "CHANNEL" then
+		target = tonumber(target)
+	end
 	AddOn_Chomp.SendAddonMessage(prefix, text, kind, target, PRIORITY_FROM_CTL[priorityName], queueName or ("%s%s%s"):format(prefix, kind, (tostring(target) or "")), callback, callbackArg)
 end
 
@@ -67,6 +70,9 @@ function ChatThrottleLib:SendChatMessage(priorityName, prefix, text, kind, langu
 		error("ChatThrottleLib:SendChatMessage(): callback: expected function, got " .. type(callback), 2)
 	elseif #text > 255 then
 		error("ChatThrottleLib:SendChatMessage(): message length cannot exceed 255 bytes", 2)
+	end
+	if kind == "CHANNEL" then
+		target = tonumber(target)
 	end
 	AddOn_Chomp.SendChatMessage(text, kind, language, target, PRIORITY_FROM_CTL[priorityName], queueName or ("%s%s%s"):format(prefix, (kind or "SAY"), (tostring(target) or "")), callback, callbackArg)
 end
