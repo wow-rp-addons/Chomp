@@ -409,9 +409,7 @@ function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, prefixSettings)
 end
 
 local function BNGetIDGameAccount(name)
-	-- The second conditional checks for appearing offline. This has to run
-	-- after PLAYER_LOGIN, hence Chomp queuing outgoing messages until then.
-	if not BNConnected() or not BNGetGameAccountInfoByGUID(UnitGUID("player")) then
+	if not BNConnected() then
 		return nil
 	end
 	name = AddOn_Chomp.NameMergedRealm(name)
