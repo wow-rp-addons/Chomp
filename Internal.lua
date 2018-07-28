@@ -351,7 +351,7 @@ end
 ]]
 
 -- Hooks don't trigger if the hooked function errors, so there's no need to
--- check parameters.
+-- check parameters, if those parameters cause errors (which most don't now).
 
 local function MessageEventFilter_SYSTEM (self, event, text)
 	local name = text:match(ERR_CHAT_PLAYER_NOT_FOUND_S:format("(.+)"))
@@ -405,6 +405,18 @@ local function HookBNSendWhisper(bnetIDAccount, text)
 	Internal.bytes = Internal.bytes - (length + OVERHEAD)
 end
 
+local function HookC_ClubSendMessage(clubID, streamID, text)
+	if Internal.isSending then return end
+	local length = #tostring(text)
+	Internal.bytes = Internal.bytes - (length + OVERHEAD)
+end
+
+local function HookC_ClubEditMessage(clubID, streamID, messageID, text)
+	if Internal.isSending then return end
+	local length = #tostring(text)
+	Internal.bytes = Internal.bytes - (length + OVERHEAD)
+end
+
 --[[
 	FRAME SCRIPTS
 ]]
@@ -431,6 +443,8 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 		hooksecurefunc("SendChatMessage", HookSendChatMessage)
 		hooksecurefunc("BNSendGameData", HookBNSendGameData)
 		hooksecurefunc("BNSendWhisper", HookBNSendWhisper)
+		hooksecurefunc(C_Club, "SendMessage", HookC_ClubSendMessage)
+		hooksecurefunc(C_Club, "EditMessage", HookC_ClubEditMessage)
 		ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", MessageEventFilter_SYSTEM)
 		self.SameRealm = {}
 		self.SameRealm[(GetRealmName():gsub("[%s%-]", ""))] = true
