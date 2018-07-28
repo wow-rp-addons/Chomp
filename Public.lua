@@ -417,7 +417,7 @@ function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, prefixSettings)
 end
 
 local function BNGetIDGameAccount(name)
-	if not BNConnected() then
+	if not BNFeaturesEnabledAndConnected() then
 		return nil
 	end
 	name = AddOn_Chomp.NameMergedRealm(name)
