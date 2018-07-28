@@ -97,7 +97,7 @@ end
 
 local oneTimeError
 local function HandleMessageIn(prefix, text, channel, sender, target, zoneChannelID, localID, name, instanceID)
-	if not IsLoggedIn() then
+	if not Internal.isReady then
 		if not Internal.IncomingQueue then
 			Internal.IncomingQueue = {}
 		end
@@ -437,6 +437,7 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 		for i, realm in ipairs(GetAutoCompleteRealms()) do
 			self.SameRealm[(realm:gsub("[%s%-]", ""))] = true
 		end
+		Internal.isReady = true
 		if self.IncomingQueue then
 			for i, q in ipairs(self.IncomingQueue) do
 				HandleMessageIn(unpack(q, 1, 4))

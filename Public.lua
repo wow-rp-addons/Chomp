@@ -29,8 +29,11 @@ local function QueueMessageOut(func, ...)
 	if not Internal.OutgoingQueue then
 		Internal.OutgoingQueue = {}
 	end
+	local t = { ... }
+	t.f = func
+	t.n = select("#", ...)
 	local q = Internal.OutgoingQueue
-	q[#q + 1] = { ..., f = func, n = select("#", ...) }
+	q[#q + 1] = t
 end
 
 function AddOn_Chomp.SendAddonMessage(prefix, text, kind, target, priority, queue, callback, callbackArg)
@@ -58,8 +61,9 @@ function AddOn_Chomp.SendAddonMessage(prefix, text, kind, target, priority, queu
 	elseif #prefix > 16 then
 		error("AddOn_Chomp.SendAddonMessage(): prefix: length cannot exceed 16 bytes", 2)
 	end
-	if not IsLoggedIn() then
+	if not Internal.isReady then
 		QueueMessageOut("SendAddonMessage", prefix, text, kind, target, priority, queue, callback, callbackArg)
+		return
 	end
 
 	if not kind then
@@ -133,8 +137,9 @@ function AddOn_Chomp.SendAddonMessageLogged(prefix, text, kind, target, priority
 	elseif #prefix > 16 then
 		error("AddOn_Chomp.SendAddonMessageLogged(): prefix: length cannot exceed 16 bytes", 2)
 	end
-	if not IsLoggedIn() then
+	if not Internal.isReady then
 		QueueMessageOut("SendAddonMessageLogged", prefix, text, kind, target, priority, queue, callback, callbackArg)
+		return
 	end
 	
 	if not kind then
@@ -206,8 +211,9 @@ function AddOn_Chomp.SendChatMessage(text, kind, language, target, priority, que
 	if length > 255 then
 		error("AddOn_Chomp.SendChatMessage(): text length cannot exceed 255 bytes", 2)
 	end
-	if not IsLoggedIn() then
+	if not Internal.isReady then
 		QueueMessageOut("SendChatMessage", text, kind, language, target, priority, queue, callback, callbackArg)
+		return
 	end
 
 	if not kind then
@@ -278,8 +284,9 @@ function AddOn_Chomp.BNSendGameData(bnetIDGameAccount, prefix, text, priority, q
 		error("AddOn_Chomp.BNSendGameData(): prefix: length cannot exceed 16 bytes", 2)
 	end
 
-	if not IsLoggedIn() then
+	if not Internal.isReady then
 		QueueMessageOut("BNSendGameData", bnetIDGameAccount, prefix, text, priority, queue, callback, callbackArg)
+		return
 	end
 
 	length = length + 18 -- 16 byte prefix, 2 byte bnetIDAccount
@@ -326,8 +333,9 @@ function AddOn_Chomp.BNSendWhisper(bnetIDAccount, text, priority, queue, callbac
 		error("AddOn_Chomp.BNSendWhisper(): text length cannot exceed 997 bytes", 2)
 	end
 
-	if not IsLoggedIn() then
+	if not Internal.isReady then
 		QueueMessageOut("BNSendWhisper", bnetIDAccount, text, priority, queue, callback, callbackArg)
+		return
 	end
 
 	length = length + 2 -- 2 byte bnetIDAccount
@@ -500,8 +508,9 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 		error("AddOn_Chomp.SmartAddonMessage(): messageOptions.queue: expected string or nil, got " .. type(queue), 2)
 	end
 
-	if not IsLoggedIn() then
+	if not Internal.isReady then
 		QueueMessageOut("SmartAddonMessage", prefix, data, kind, target, messageOptions)
+		return
 	end
 
 	local bitField = 0x000
