@@ -35,7 +35,7 @@ local ChompAPI =
 			Arguments =
 			{
 				{ Name = "name", Type = "string", Nilable = false },
-				{ Name = "realmName", Type = "boolean", Nilable = true },
+				{ Name = "realmName", Type = "bool", Nilable = true },
 			},
 
 			Returns = 
@@ -126,7 +126,7 @@ local ChompAPI =
 
 			Returns = 
 			{
-				{ Name = "isSending", Type = "boolean", Nilable = false, Documentation = { "Returns true if Chomp is in the process of sending a message." } },
+				{ Name = "isSending", Type = "bool", Nilable = false, Documentation = { "Returns true if Chomp is in the process of sending a message." } },
 			},
 		},
 		{
@@ -168,7 +168,7 @@ local ChompAPI =
 
 			Returns = 
 			{
-				{ Name = "permitted", Type = "boolean", Nilable = false },
+				{ Name = "permitted", Type = "bool", Nilable = false },
 				{ Name = "reason", Type = "string", Nilable = true },
 			},
 		},
@@ -226,7 +226,7 @@ local ChompAPI =
 			{
 				{ Name = "prefix", Type = "string", Nilable = false, Documentation = { "Maximum length of 16 bytes." } },
 				{ Name = "callback", Type = "function", Nilable = false, Documentation = { "Arguments passed are identical to CHAT_MSG_ADDON event." } },
-				{ Name = "prefixSettings", Type = "table", Nilable = true, Documentation = { "Accepts boolean keys of: broadcastPrefix, fullMsgOnly.", "Accepts table keys of: validTypes.", "Acceptions function keys of: rawCallback." } },
+				{ Name = "prefixSettings", Type = "ChompPrefixOptions", Nilable = true, Documentation = { "If omitted, defaults to permitting only strings and returning only complete message sequences." } },
 			},
 		},
 		{
@@ -238,7 +238,7 @@ local ChompAPI =
 				{ Name = "prefix", Type = "string", Nilable = false, Documentation = { "Maximum length of 16 bytes." } },
 				{ Name = "data", Type = "any", Nilable = false, Documentation = { "String required unless the message has been set to require serialization.", "Only types registered as valid for the prefix may be used.", "The outgoing text will be split (based on selected method's maximum message size, encoded (based on selected method's permitted byte sequences), and otherwise transformed as necessary prior to sending." } },
 				{ Name = "target", Type = "string", Nilable = false },
-				{ Name = "messageOptions", Type = "table", Nilable = true, Documentation = { "This table should be stored and reused if you send multiple messages with the same options. However, modifying the referenced table should be avoided after passing it to Chomp.", "Accepts string keys of: priority, queue.", "Accepts boolean keys of: serialize, binaryBlob, allowBroadcast, universalBroadcast." }}
+				{ Name = "messageOptions", Type = "ChompMessageOptions", Nilable = true }
 			},
 
 			Returns = 
@@ -258,7 +258,7 @@ local ChompAPI =
 
 			Returns = 
 			{
-				{ Name = "canReport", Type = "boolean", Nilable = false },
+				{ Name = "canReport", Type = "bool", Nilable = false },
 				{ Name = "reason", Type = "string", Nilable = false, Documentation = { "One of UNKOWN, BATTLENET, or UNLOGGED if canReport is false; always LOGGED if canReport is true." } },
 			},
 		},
@@ -275,7 +275,7 @@ local ChompAPI =
 
 			Returns = 
 			{
-				{ Name = "didReport", Type = "boolean", Nilable = false },
+				{ Name = "didReport", Type = "bool", Nilable = false },
 				{ Name = "reason", Type = "string", Nilable = false, Documentation = { "UNKOWN, BATTLENET, or UNLOGGED if didReport is false; always LOGGED if didReport is true." } },
 			},
 		},
@@ -290,7 +290,7 @@ local ChompAPI =
 
 			Returns = 
 			{
-				{ Name = "didRegister", Type = "boolean", Nilable = false },
+				{ Name = "didRegister", Type = "bool", Nilable = false },
 			},
 		},
 		{
@@ -304,7 +304,7 @@ local ChompAPI =
 
 			Returns = 
 			{
-				{ Name = "didUnregister", Type = "boolean", Nilable = false },
+				{ Name = "didUnregister", Type = "bool", Nilable = false },
 			},
 		},
 		{
@@ -342,6 +342,42 @@ local ChompAPI =
 	},
 	Tables = 
 	{
+		{
+			Name = "ChompMessageOptions",
+			Type = "Structure",
+			Fields =
+			{
+				{ Name = "priority", Type = "string", Nilable = true },
+				{ Name = "queue", Type = "string", Nilable = true },
+				{ Name = "serialize", Type = "bool", Nilable = true },
+				{ Name = "binaryBlob", Type = "bool", Nilable = true, Documentation = { "Messages marked as a binary blob will never be sent over logged channels." } },
+				{ Name = "allowBroadcast", Type = "bool", Nilable = true, Documentation = { "Broadcast messages may be sent over semi-public group channels (PARTY/RAID/INSTANCE_CHAT) when their target is a crossrealm player not available through BattleTag." } },
+				{ Name = "universalBroadcast", Type = "bool", Nilable = true, Documentation = { "This marks messages as 'universal' when broadcast, meaning they're able to be used by any listener." } },
+			},
+		},
+		{
+			Name = "ChompPrefixOptions",
+			Type = "Structure",
+			Fields =
+			{
+				{ Name = "fullMsgOnly", Type = "bool", Nilable = true, Documentation = { "Defaults to true." } },
+				{ Name = "broadcastPrefix", Type = "bool", Nilable = true, Documentation = { "Must be true to use broadcast whispers.", "This has potential privacy implications, as broadcasts are sent over group addon channels and may be monitored by others in group." } },
+				{ Name = "rawCallback", Type = "function", Nilable = true, Documentation = { "Provides all raw message data, as they are received and even if fullMsgOnly is set, to the provided callback.", "May be used to monitor incoming status of serialized data, for example." } },
+				{ Name = "validTypes", Type = "ChompValidTypes", Nilable = true, Documentation = { "Defaults to permitting strings only." } },
+			},
+		},
+		{
+			Name = "ChompValidTypes",
+			Type = "Structure",
+			Fields =
+			{
+				{ Name = "string", Type = "bool", Nilable = true },
+				{ Name = "boolean", Type = "bool", Nilable = true },
+				{ Name = "number", Type = "bool", Nilable = true },
+				{ Name = "table", Type = "bool", Nilable = true, Documentation = { "Tables are serialized with all non-forbidden types included -- function, userdata, thread are forbidden." } },
+				{ Name = "nil", Type = "bool", Nilable = true },
+			},
+		},
 	},
 }
 
