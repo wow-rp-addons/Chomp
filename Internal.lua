@@ -200,8 +200,9 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 				if deserialize then
 					local success, original = pcall(AddOn_Chomp.Deserialize, handlerData)
 					if success then
-						-- TODO: Handle failure some other way?
 						handlerData = original
+					else
+						handlerData = nil
 					end
 				end
 			end
