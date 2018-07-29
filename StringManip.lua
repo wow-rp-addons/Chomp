@@ -107,6 +107,21 @@ function AddOn_Chomp.Serialize(object)
 	return serialized
 end
 
+local IsTableSafe
+function IsTableSafe(t)
+	for k,v in pairs(t) do
+		local typeK, typeV = type(k), type(v)
+		if not Serialize[typeK] or not Serialize[typeV] then
+			return false
+		elseif typeK == "table" and not IsTableSafe(k) then
+			return false
+		elseif typeV == "table" and not IsTableSafe(v) then
+			return false
+		end
+	end
+	return true
+end
+
 local EMPTY_ENV = setmetatable({}, {
 	__newindex = function() end,
 	__metatable = false,
@@ -116,16 +131,19 @@ function AddOn_Chomp.Deserialize(text)
 	if type(text) ~= "string" then
 		error("AddOn_Chomp.Deserialize(): text: expected string, got " .. type(text), 2)
 	end
-	local success, func = pcall(loadstring, ("return %s"):format(text))
-	if not success then
+	local func = loadstring(("return %s"):format(text))
+	if not func then
 		error("AddOn_Chomp.Deserialize(): text: could not be loaded via loadstring", 2)
 	end
 	setfenv(func, EMPTY_ENV)
 	local retSuccess, ret = pcall(func)
+	local retType = type(ret)
 	if not retSuccess then
 		error("AddOn_Chomp.Deserialize(): text: error while reading data", 2)
-	elseif not Serialize[type(ret)] then
+	elseif not Serialize[retType] then
 		error("AddOn_Chomp.Deserialize(): text: deserialized to invalid type: " .. type(ret), 2)
+	elseif retType == "table" and text:find("function", nil, true) and not IsTableSafe(ret) then
+		error("AddOn_Chomp.Deserialize(): text: deserialized table included forbidden type", 2)
 	end
 	return ret
 end
