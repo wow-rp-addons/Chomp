@@ -525,7 +525,9 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 		end
 	end
 
-	target = AddOn_Chomp.NameMergedRealm(target)
+	if kind == "WHISPER" then
+		target = AddOn_Chomp.NameMergedRealm(target)
+	end
 	local queue = ("%s%s%s"):format(prefix, kind, tostring(target) or "")
 
 	if kind == "WHISPER" then
