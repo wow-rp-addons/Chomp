@@ -236,7 +236,8 @@ end
 local function ParseBattleNetMessage(prefix, text, kind, bnetIDGameAccount)
 	local active, characterName, client, realmName = BNGetGameAccountInfo(bnetIDGameAccount)
 	-- Build 27144: This can now be nil after removing someone from BattleTag.
-	if not characterName then
+	-- Build 28807: This can be an empty string when someone is sending a message when they're offline.
+	if not characterName or characterName == "" then
 		return
 	end
 	local name = AddOn_Chomp.NameMergedRealm(characterName, realmName)
