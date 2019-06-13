@@ -384,7 +384,7 @@ local function HookSendAddonMessage(prefix, text, kind, target)
 end
 
 local function HookSendAddonMessageLogged(prefix, text, kind, target)
-	if kind == "WHISPER" then
+	if kind == "WHISPER" and target then
 		Internal.Filter[target] = GetTime() + (select(3, GetNetStats()) * 0.001) + 5.000
 	end
 	if Internal.isSending then return end
