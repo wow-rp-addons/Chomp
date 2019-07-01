@@ -536,7 +536,6 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 		local bnetIDGameAccount = BNGetIDGameAccount(target)
 		if bnetIDGameAccount then
 			ToBattleNet(bitField, prefix, Internal.EncodeQuotedPrintable(data, false), kind, bnetIDGameAccount, messageOptions.priority, messageOptions.queue or queue)
-			sentBnet = true
 			return "BATTLENET"
 		end
 		local targetUnit = Ambiguate(target, "none")
@@ -555,11 +554,9 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 	end
 	if not messageOptions.binaryBlob then
 		ToInGameLogged(bitField, prefix, Internal.EncodeQuotedPrintable(data, true), kind, target, messageOptions.priority, messageOptions.queue or queue)
-		sentLogged = true
 		return "LOGGED"
 	end
 	ToInGame(bitField, prefix, data, kind, target, messageOptions.priority, messageOptions.queue or queue)
-	sentInGame = true
 	return "UNLOGGED"
 end
 
