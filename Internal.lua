@@ -234,9 +234,17 @@ local function ParseInGameMessageLogged(prefix, text, kind, sender, target, zone
 end
 
 local function ParseBattleNetMessage(prefix, text, kind, bnetIDGameAccount)
-	local gameAccountInfo = C_BattleNet.GetGameAccountInfoByID(bnetIDGameAccount)
-	local characterName = gameAccountInfo.characterName;
-	local realmName = gameAccountInfo.realmName;
+	local characterName;
+	local realmName;
+
+	if WOW_PROJECT_ID == WOW_PROJECT_CLASSIC then
+		local active, client;
+		active, characterName, client, realmName = BNGetGameAccountInfo(bnetIDGameAccount)
+	else
+		local gameAccountInfo = C_BattleNet.GetGameAccountInfoByID(bnetIDGameAccount)
+		characterName = gameAccountInfo.characterName;
+		realmName = gameAccountInfo.realmName;
+	end
 	-- Build 27144: This can now be nil after removing someone from BattleTag.
 	-- Build 28807: This can be an empty string when someone is sending a message when they're offline.
 	if not characterName or characterName == "" then
