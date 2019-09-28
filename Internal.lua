@@ -50,8 +50,6 @@ local POOL_TICK = 0.2
 
 local PRIORITIES = { "HIGH", "MEDIUM", "LOW" }
 
-local PRIORITY_TO_CTL = { LOW = "BULK",  MEDIUM = "NORMAL", HIGH = "ALERT" }
-
 --[[
 	INTERNAL TABLES
 ]]

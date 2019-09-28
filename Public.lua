@@ -23,6 +23,7 @@ local Internal = __chomp_internal
 
 local DEFAULT_PRIORITY = "MEDIUM"
 local PRIORITIES_HASH = { HIGH = true, MEDIUM = true, LOW = true }
+local PRIORITY_TO_CTL = { LOW = "BULK", MEDIUM = "NORMAL", HIGH = "ALERT" }
 local OVERHEAD = 27
 
 local function QueueMessageOut(func, ...)
