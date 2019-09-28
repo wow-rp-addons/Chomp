@@ -475,7 +475,7 @@ local function BNSendGameDataRearrange(prefix, text, bnetIDGameAccount, ...)
 	return AddOn_Chomp.BNSendGameData(bnetIDGameAccount, prefix, text, ...)
 end
 
-local function ToBattleNet(bitField, prefix, text, kind, bnetIDGameAccount, priority)
+local function ToBattleNet(bitField, prefix, text, kind, bnetIDGameAccount, priority, queue)
 	return SplitAndSend(BNSendGameDataRearrange, 4078, bitField, prefix, text, bnetIDGameAccount, priority, queue)
 end
 
