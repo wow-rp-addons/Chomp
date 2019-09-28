@@ -141,7 +141,7 @@ function AddOn_Chomp.SendAddonMessageLogged(prefix, text, kind, target, priority
 		QueueMessageOut("SendAddonMessageLogged", prefix, text, kind, target, priority, queue, callback, callbackArg)
 		return
 	end
-	
+
 	if not kind then
 		kind = "PARTY"
 	else
