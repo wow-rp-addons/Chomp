@@ -573,7 +573,7 @@ function AddOn_Chomp.CheckReportGUID(prefix, guid)
 		error("AddOn_Chomp.CheckReportGUID(): prefix: prefix has not been registered with Chomp", 2)
 	end
 	local success, class, classID, race, raceID, gender, name, realm = pcall(GetPlayerInfoByGUID, guid)
-	if not success or not name or name == UNKNOWN then
+	if not success or not name or name == UNKNOWNOBJECT then
 		return false, "UNKNOWN"
 	end
 	local target = AddOn_Chomp.NameMergedRealm(name, realm)
