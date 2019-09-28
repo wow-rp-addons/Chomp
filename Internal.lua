@@ -167,7 +167,7 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 	end
 
 	if prefixData.rawCallback then
-		xpcall(prefixData.rawCallback, geterrorhandler(), prefix, text, channel, sender, target, zoneChannelID, localID, name, instanceID, nil, nil, nil, sessionID, msgID, msgTotal, bitField)
+		xpcall(prefixData.rawCallback, CallErrorHandler, prefix, text, channel, sender, target, zoneChannelID, localID, name, instanceID, nil, nil, nil, sessionID, msgID, msgTotal, bitField)
 	end
 
 	local deserialize = bit.band(bitField, Internal.BITS.SERIALIZE) == Internal.BITS.SERIALIZE
@@ -207,7 +207,7 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 				end
 			end
 			if prefixData.validTypes[type(handlerData)] then
-				xpcall(prefixData.callback, geterrorhandler(), prefix, handlerData, channel, sender, target, zoneChannelID, localID, name, instanceID, nil, nil, nil, sessionID, msgID, msgTotal, bitField)
+				xpcall(prefixData.callback, CallErrorHandler, prefix, handlerData, channel, sender, target, zoneChannelID, localID, name, instanceID, nil, nil, nil, sessionID, msgID, msgTotal, bitField)
 			end
 			buffer[i] = false
 			if i == msgTotal then
@@ -289,7 +289,7 @@ function Internal:RunQueue()
 				self.isSending = false
 			end
 			if message.callback then
-				xpcall(message.callback, geterrorhandler(), message.callbackArg, didSend)
+				xpcall(message.callback, CallErrorHandler, message.callbackArg, didSend)
 			end
 		end
 		if not priority[1] then
@@ -378,7 +378,7 @@ local function MessageEventFilter_SYSTEM (self, event, text)
 		return false
 	end
 	for i, func in ipairs(Internal.ErrorCallbacks) do
-		xpcall(func, geterrorhandler(), name)
+		xpcall(func, CallErrorHandler, name)
 	end
 	return true
 end

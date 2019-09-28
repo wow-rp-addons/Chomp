@@ -92,7 +92,7 @@ function AddOn_Chomp.SendAddonMessage(prefix, text, kind, target, priority, queu
 		C_ChatInfo.SendAddonMessage(prefix, text, kind, target)
 		Internal.isSending = false
 		if callback then
-			xpcall(callback, geterrorhandler(), callbackArg, true)
+			xpcall(callback, CallErrorHandler, callbackArg, true)
 		end
 		return
 	end
@@ -168,7 +168,7 @@ function AddOn_Chomp.SendAddonMessageLogged(prefix, text, kind, target, priority
 		C_ChatInfo.SendAddonMessageLogged(prefix, text, kind, target)
 		Internal.isSending = false
 		if callback then
-			xpcall(callback, geterrorhandler(), callbackArg, true)
+			xpcall(callback, CallErrorHandler, callbackArg, true)
 		end
 		return
 	end
@@ -242,7 +242,7 @@ function AddOn_Chomp.SendChatMessage(text, kind, language, target, priority, que
 		SendChatMessage(text, kind, language, target)
 		Internal.isSending = false
 		if callback then
-			xpcall(callback, geterrorhandler(), callbackArg, true)
+			xpcall(callback, CallErrorHandler, callbackArg, true)
 		end
 		return
 	end
@@ -297,7 +297,7 @@ function AddOn_Chomp.BNSendGameData(bnetIDGameAccount, prefix, text, priority, q
 		BNSendGameData(bnetIDGameAccount, prefix, text)
 		Internal.isSending = false
 		if callback then
-			xpcall(callback, geterrorhandler(), callbackArg, didSend)
+			xpcall(callback, CallErrorHandler, callbackArg, didSend)
 		end
 		return
 	end
@@ -346,7 +346,7 @@ function AddOn_Chomp.BNSendWhisper(bnetIDAccount, text, priority, queue, callbac
 		BNSendWhisper(bnetIDAccount, text)
 		Internal.isSending = false
 		if callback then
-			xpcall(callback, geterrorhandler(), callbackArg, didSend)
+			xpcall(callback, CallErrorHandler, callbackArg, didSend)
 		end
 		return
 	end
