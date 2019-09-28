@@ -424,7 +424,7 @@ local function BNGetIDGameAccount(name)
 	name = AddOn_Chomp.NameMergedRealm(name)
 	for i = 1, select(2, BNGetNumFriends()) do
 		for j = 1, BNGetNumFriendGameAccounts(i) do
-			local active, characterName, client, realmName, realmID, faction, race, class, blank, zoneName, level, gameText, broadcastText, broadcastTime, isConnected, bnetIDGameAccount = BNGetFriendGameAccountInfo(i, j)
+			local _, characterName, client, realmName, _, faction, _, _, _, _, _, _, _, _, isConnected, bnetIDGameAccount = BNGetFriendGameAccountInfo(i, j)
 			if isConnected and client == BNET_CLIENT_WOW then
 				local realm = realmName and realmName ~= "" and (realmName:gsub("%s*%-*", "")) or nil
 				if realm and (not Internal.SameRealm[realm] or faction ~= UnitFactionGroup("player")) and name == AddOn_Chomp.NameMergedRealm(characterName, realm) then
@@ -572,7 +572,7 @@ function AddOn_Chomp.CheckReportGUID(prefix, guid)
 	elseif not prefixData then
 		error("AddOn_Chomp.CheckReportGUID(): prefix: prefix has not been registered with Chomp", 2)
 	end
-	local success, class, classID, race, raceID, gender, name, realm = pcall(GetPlayerInfoByGUID, guid)
+	local success, _, _, _, _, _, name, realm = pcall(GetPlayerInfoByGUID, guid)
 	if not success or not name or name == UNKNOWNOBJECT then
 		return false, "UNKNOWN"
 	end
