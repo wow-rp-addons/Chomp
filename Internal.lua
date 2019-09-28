@@ -302,16 +302,16 @@ function Internal:RunQueue()
 end
 
 function Internal:UpdateBytes()
-	local BPS, BURST = self.BPS, self.BURST
+	local bps, burst = self.BPS, self.BURST
 	if InCombatLockdown() then
-		BPS = BPS * 0.50
-		BURST = BURST * 0.50
+		bps = bps * 0.50
+		burst = burst * 0.50
 	end
 
 	local now = GetTime()
-	local newBytes = (now - self.lastByteUpdate) * BPS
-	local bytes = math.min(BURST, self.bytes + newBytes)
-	bytes = math.max(bytes, -BPS) -- Probably going to fail anyway.
+	local newBytes = (now - self.lastByteUpdate) * bps
+	local bytes = math.min(burst, self.bytes + newBytes)
+	bytes = math.max(bytes, -bps) -- Probably going to fail anyway.
 	self.bytes = bytes
 	self.lastByteUpdate = now
 
