@@ -298,7 +298,7 @@ function AddOn_Chomp.BNSendGameData(bnetIDGameAccount, prefix, text, priority, q
 		BNSendGameData(bnetIDGameAccount, prefix, text)
 		Internal.isSending = false
 		if callback then
-			xpcall(callback, CallErrorHandler, callbackArg, didSend)
+			xpcall(callback, CallErrorHandler, callbackArg, true)
 		end
 		return
 	end
@@ -347,7 +347,7 @@ function AddOn_Chomp.BNSendWhisper(bnetIDAccount, text, priority, queue, callbac
 		BNSendWhisper(bnetIDAccount, text)
 		Internal.isSending = false
 		if callback then
-			xpcall(callback, CallErrorHandler, callbackArg, didSend)
+			xpcall(callback, CallErrorHandler, callbackArg, true)
 		end
 		return
 	end
