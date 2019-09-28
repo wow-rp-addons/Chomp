@@ -504,9 +504,9 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 	elseif dataType ~= "string" and not messageOptions.serialize then
 		error("AddOn_Chomp.SmartAddonMessage(): data: no serialization requested, but serialization required for type: " .. dataType, 2)
 	elseif messageOptions.priority and not PRIORITIES_HASH[messageOptions.priority] then
-		error("AddOn_Chomp.SmartAddonMessage(): messageOptions.priority: expected \"HIGH\", \"MEDIUM\", or \"LOW\", got " .. tostring(priority), 2)
+		error("AddOn_Chomp.SmartAddonMessage(): messageOptions.priority: expected \"HIGH\", \"MEDIUM\", or \"LOW\", got " .. tostring(messageOptions.priority), 2)
 	elseif messageOptions.queue and type(messageOptions.queue) ~= "string" then
-		error("AddOn_Chomp.SmartAddonMessage(): messageOptions.queue: expected string or nil, got " .. type(queue), 2)
+		error("AddOn_Chomp.SmartAddonMessage(): messageOptions.queue: expected string or nil, got " .. type(messageOptions.queue), 2)
 	end
 
 	if not Internal.isReady then
