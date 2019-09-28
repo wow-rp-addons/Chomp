@@ -13,10 +13,6 @@ max_comment_line_length = false
 -- Add exceptions for external libraries.
 std = "lua51+wow+wowstd"
 
-read_globals = {
-
-}
-
 globals = {
 	"__chomp_internal",
 	"AddOn_Chomp",
