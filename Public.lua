@@ -148,7 +148,7 @@ function AddOn_Chomp.SendAddonMessageLogged(prefix, text, kind, target, priority
 	end
 	length = length + #prefix + OVERHEAD
 
-	if Internal.ChatThrottleLib and not ChatThrottleLib.isChomp then
+	if Internal.ChatThrottleLib and not ChatThrottleLib.isChomp and ChatThrottleLib.SendAddonMessageLogged then
 		-- CTL likes to drop RAID messages, despite the game falling back
 		-- automatically to PARTY.
 		if kind == "RAID" and not IsInRaid() then
