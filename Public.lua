@@ -23,6 +23,7 @@ local Internal = __chomp_internal
 
 local DEFAULT_PRIORITY = "MEDIUM"
 local PRIORITIES_HASH = { HIGH = true, MEDIUM = true, LOW = true }
+local PRIORITY_TO_CTL = { LOW = "BULK", MEDIUM = "NORMAL", HIGH = "ALERT" }
 local OVERHEAD = 27
 
 local function QueueMessageOut(func, ...)
@@ -90,7 +91,7 @@ function AddOn_Chomp.SendAddonMessage(prefix, text, kind, target, priority, queu
 		C_ChatInfo.SendAddonMessage(prefix, text, kind, target)
 		Internal.isSending = false
 		if callback then
-			xpcall(callback, geterrorhandler(), callbackArg, true)
+			xpcall(callback, CallErrorHandler, callbackArg, true)
 		end
 		return
 	end
@@ -137,7 +138,7 @@ function AddOn_Chomp.SendAddonMessageLogged(prefix, text, kind, target, priority
 		QueueMessageOut("SendAddonMessageLogged", prefix, text, kind, target, priority, queue, callback, callbackArg)
 		return
 	end
-	
+
 	if not kind then
 		kind = "PARTY"
 	else
@@ -164,7 +165,7 @@ function AddOn_Chomp.SendAddonMessageLogged(prefix, text, kind, target, priority
 		C_ChatInfo.SendAddonMessageLogged(prefix, text, kind, target)
 		Internal.isSending = false
 		if callback then
-			xpcall(callback, geterrorhandler(), callbackArg, true)
+			xpcall(callback, CallErrorHandler, callbackArg, true)
 		end
 		return
 	end
@@ -236,7 +237,7 @@ function AddOn_Chomp.SendChatMessage(text, kind, language, target, priority, que
 		SendChatMessage(text, kind, language, target)
 		Internal.isSending = false
 		if callback then
-			xpcall(callback, geterrorhandler(), callbackArg, true)
+			xpcall(callback, CallErrorHandler, callbackArg, true)
 		end
 		return
 	end
@@ -291,7 +292,7 @@ function AddOn_Chomp.BNSendGameData(bnetIDGameAccount, prefix, text, priority, q
 		BNSendGameData(bnetIDGameAccount, prefix, text)
 		Internal.isSending = false
 		if callback then
-			xpcall(callback, geterrorhandler(), callbackArg, didSend)
+			xpcall(callback, CallErrorHandler, callbackArg, true)
 		end
 		return
 	end
@@ -340,7 +341,7 @@ function AddOn_Chomp.BNSendWhisper(bnetIDAccount, text, priority, queue, callbac
 		BNSendWhisper(bnetIDAccount, text)
 		Internal.isSending = false
 		if callback then
-			xpcall(callback, geterrorhandler(), callbackArg, didSend)
+			xpcall(callback, CallErrorHandler, callbackArg, true)
 		end
 		return
 	end
@@ -417,7 +418,7 @@ local function BNGetIDGameAccount(name)
 	name = AddOn_Chomp.NameMergedRealm(name)
 	for i = 1, BNGetNumFriends() do
 		for j = 1, BNGetNumFriendGameAccounts(i) do
-			local active, characterName, client, realmName, realmID, faction, race, class, blank, zoneName, level, gameText, broadcastText, broadcastTime, isConnected, bnetIDGameAccount = BNGetFriendGameAccountInfo(i, j)
+			local _, characterName, client, realmName, _, faction, _, _, _, _, _, _, _, _, isConnected, bnetIDGameAccount = BNGetFriendGameAccountInfo(i, j)
 			if isConnected and client == BNET_CLIENT_WOW then
 				local realm = realmName and realmName ~= "" and (realmName:gsub("%s*%-*", "")) or nil
 				if realm and (not Internal.SameRealm[realm] or faction ~= UnitFactionGroup("player")) and name == AddOn_Chomp.NameMergedRealm(characterName, realm) then
@@ -468,7 +469,7 @@ local function BNSendGameDataRearrange(prefix, text, bnetIDGameAccount, ...)
 	return AddOn_Chomp.BNSendGameData(bnetIDGameAccount, prefix, text, ...)
 end
 
-local function ToBattleNet(bitField, prefix, text, kind, bnetIDGameAccount, priority)
+local function ToBattleNet(bitField, prefix, text, kind, bnetIDGameAccount, priority, queue)
 	return SplitAndSend(BNSendGameDataRearrange, 4078, bitField, prefix, text, bnetIDGameAccount, priority, queue)
 end
 
@@ -497,9 +498,9 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 	elseif dataType ~= "string" and not messageOptions.serialize then
 		error("AddOn_Chomp.SmartAddonMessage(): data: no serialization requested, but serialization required for type: " .. dataType, 2)
 	elseif messageOptions.priority and not PRIORITIES_HASH[messageOptions.priority] then
-		error("AddOn_Chomp.SmartAddonMessage(): messageOptions.priority: expected \"HIGH\", \"MEDIUM\", or \"LOW\", got " .. tostring(priority), 2)
+		error("AddOn_Chomp.SmartAddonMessage(): messageOptions.priority: expected \"HIGH\", \"MEDIUM\", or \"LOW\", got " .. tostring(messageOptions.priority), 2)
 	elseif messageOptions.queue and type(messageOptions.queue) ~= "string" then
-		error("AddOn_Chomp.SmartAddonMessage(): messageOptions.queue: expected string or nil, got " .. type(queue), 2)
+		error("AddOn_Chomp.SmartAddonMessage(): messageOptions.queue: expected string or nil, got " .. type(messageOptions.queue), 2)
 	end
 
 	if not Internal.isReady then
@@ -565,8 +566,8 @@ function AddOn_Chomp.CheckReportGUID(prefix, guid)
 	elseif not prefixData then
 		error("AddOn_Chomp.CheckReportGUID(): prefix: prefix has not been registered with Chomp", 2)
 	end
-	local success, class, classID, race, raceID, gender, name, realm = pcall(GetPlayerInfoByGUID, guid)
-	if not success or not name or name == UNKNOWN then
+	local success, _, _, _, _, _, name, realm = pcall(GetPlayerInfoByGUID, guid)
+	if not success or not name or name == UNKNOWNOBJECT then
 		return false, "UNKNOWN"
 	end
 	local target = AddOn_Chomp.NameMergedRealm(name, realm)

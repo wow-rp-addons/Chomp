@@ -26,7 +26,7 @@ local ChompAPI =
 	Type = "System",
 	Namespace = "AddOn_Chomp",
 
-	Functions = 
+	Functions =
 	{
 		{
 			Name = "NameMergedRealm",
@@ -38,7 +38,7 @@ local ChompAPI =
 				{ Name = "realmName", Type = "bool", Nilable = true },
 			},
 
-			Returns = 
+			Returns =
 			{
 				{ Name = "fullName", Type = "string", Nilable = false },
 			},
@@ -124,7 +124,7 @@ local ChompAPI =
 			Name = "IsSending",
 			Type = "Function",
 
-			Returns = 
+			Returns =
 			{
 				{ Name = "isSending", Type = "bool", Nilable = false, Documentation = { "Returns true if Chomp is in the process of sending a message." } },
 			},
@@ -138,7 +138,7 @@ local ChompAPI =
 				{ Name = "object", Type = "boolean, number, string, or table", Nilable = true },
 			},
 
-			Returns = 
+			Returns =
 			{
 				{ Name = "serializedText", Type = "string", Nilable = false },
 			},
@@ -152,7 +152,7 @@ local ChompAPI =
 				{ Name = "serializedText", Type = "string", Nilable = false },
 			},
 
-			Returns = 
+			Returns =
 			{
 				{ Name = "object", Type = "boolean, number, string, or table", Nilable = true },
 			},
@@ -166,7 +166,7 @@ local ChompAPI =
 				{ Name = "text", Type = "string", Nilable = false },
 			},
 
-			Returns = 
+			Returns =
 			{
 				{ Name = "permitted", Type = "bool", Nilable = false },
 				{ Name = "reason", Type = "string", Nilable = true },
@@ -181,7 +181,7 @@ local ChompAPI =
 				{ Name = "text", Type = "string", Nilable = false },
 			},
 
-			Returns = 
+			Returns =
 			{
 				{ Name = "encodedText", Type = "string", Nilable = false, Documentation = { "WARNING: This function encodes EVERYTHING known to be potentially problematic in any chat type. It should let you send arbitrary binary over logged messages, but it explicitly circumvents some Blizzard protections on glyphs considered abusive. Use at your own risk." } },
 			},
@@ -195,7 +195,7 @@ local ChompAPI =
 				{ Name = "text", Type = "string", Nilable = false },
 			},
 
-			Returns = 
+			Returns =
 			{
 				{ Name = "decodedText", Type = "string", Nilable = false, Documentation = { "WARNING: This function encodes EVERYTHING known to be potentially problematic in any chat type. It should let you send arbitrary binary over logged messages, but it explicitly circumvents some Blizzard protections on glyphs considered abusive. Use at your own risk." } },
 			},
@@ -212,7 +212,7 @@ local ChompAPI =
 				{ Name = "textLen", Type = "number", Nilable = true, Documentation = { "Optional, saves a bit of computation time if chopping a single string multiple times." } },
 			},
 
-			Returns = 
+			Returns =
 			{
 				{ Name = "subString", Type = "string", Nilable = false, Documentation = { "A substring that is equal to or less than the requested substring, never splitting UTF-8 byte sequences and quoted-printable byte sequences." } },
 				{ Name = "offset", Type = "number", Nilable = false, Documentation = { "The number of characters shorter the substring is, compared to the requested.", "Always positive." } },
@@ -241,7 +241,7 @@ local ChompAPI =
 				{ Name = "messageOptions", Type = "ChompMessageOptions", Nilable = true }
 			},
 
-			Returns = 
+			Returns =
 			{
 				{ Name = "sentMethod", Type = "string", Nilable = false },
 			},
@@ -256,7 +256,7 @@ local ChompAPI =
 				{ Name = "guid", Type = "string", Nilable = false, Documentation = { "GUID must be used due to Blizzard constraints on reporting." } },
 			},
 
-			Returns = 
+			Returns =
 			{
 				{ Name = "canReport", Type = "bool", Nilable = false },
 				{ Name = "reason", Type = "string", Nilable = false, Documentation = { "One of UNKOWN, BATTLENET, or UNLOGGED if canReport is false; always LOGGED if canReport is true." } },
@@ -273,7 +273,7 @@ local ChompAPI =
 				{ Name = "customMessage", Type = "string", Nilable = true, Documentation = { "Custom message to pass to Blizzard GMs, regarding reported content." } },
 			},
 
-			Returns = 
+			Returns =
 			{
 				{ Name = "didReport", Type = "bool", Nilable = false },
 				{ Name = "reason", Type = "string", Nilable = false, Documentation = { "UNKOWN, BATTLENET, or UNLOGGED if didReport is false; always LOGGED if didReport is true." } },
@@ -288,7 +288,7 @@ local ChompAPI =
 				{ Name = "callback", Type = "function", Nilable = false },
 			},
 
-			Returns = 
+			Returns =
 			{
 				{ Name = "didRegister", Type = "bool", Nilable = false },
 			},
@@ -302,7 +302,7 @@ local ChompAPI =
 				{ Name = "callback", Type = "function", Nilable = false },
 			},
 
-			Returns = 
+			Returns =
 			{
 				{ Name = "didUnregister", Type = "bool", Nilable = false },
 			},
@@ -311,7 +311,7 @@ local ChompAPI =
 			Name = "GetBPS",
 			Type = "Function",
 
-			Returns = 
+			Returns =
 			{
 				{ Name = "bps", Type = "number", Nilable = false, Documentation = { "Maximum sustained bytes per second allowed." } },
 				{ Name = "burst", Type = "number", Nilable = false, Documentation = { "Maximum instantaneous burst bytes allowed." } },
@@ -331,16 +331,16 @@ local ChompAPI =
 			Name = "GetVersion",
 			Type = "Function",
 
-			Returns = 
+			Returns =
 			{
 				{ Name = "version", Type = "number", Nilable = false, Documentation = { "Version number of the active instance of Chomp Message Library." } },
 			},
 		},
 	},
-	Events = 
+	Events =
 	{
 	},
-	Tables = 
+	Tables =
 	{
 		{
 			Name = "ChompMessageOptions",

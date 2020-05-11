@@ -50,8 +50,6 @@ local POOL_TICK = 0.2
 
 local PRIORITIES = { "HIGH", "MEDIUM", "LOW" }
 
-local PRIORITY_TO_CTL = { LOW = "BULK",  MEDIUM = "NORMAL", HIGH = "ALERT" }
-
 --[[
 	INTERNAL TABLES
 ]]
@@ -146,14 +144,14 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 			return
 		end
 		if msgID == 1 then
-			local broadcastTarget, userText = text:match("^([^\058\127]*)[\058\127](.*)$")
+			local broadcastTarget, broadcastText = text:match("^([^\058\127]*)[\058\127](.*)$")
 			local ourName = AddOn_Chomp.NameMergedRealm(UnitFullName("player"))
 			if sender == ourName or broadcastTarget ~= "" and broadcastTarget ~= ourName then
 				-- Not for us, quit processing.
 				return
 			else
 				target = ourName
-				text = userText
+				text = broadcastText
 			end
 		elseif not prefixData[sender][sessionID] then
 			-- Already determined this session ID is not for us, or we came in
@@ -167,7 +165,7 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 	end
 
 	if prefixData.rawCallback then
-		xpcall(prefixData.rawCallback, geterrorhandler(), prefix, text, channel, sender, target, zoneChannelID, localID, name, instanceID, nil, nil, nil, sessionID, msgID, msgTotal, bitField)
+		xpcall(prefixData.rawCallback, CallErrorHandler, prefix, text, channel, sender, target, zoneChannelID, localID, name, instanceID, nil, nil, nil, sessionID, msgID, msgTotal, bitField)
 	end
 
 	local deserialize = bit.band(bitField, Internal.BITS.SERIALIZE) == Internal.BITS.SERIALIZE
@@ -207,7 +205,7 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 				end
 			end
 			if prefixData.validTypes[type(handlerData)] then
-				xpcall(prefixData.callback, geterrorhandler(), prefix, handlerData, channel, sender, target, zoneChannelID, localID, name, instanceID, nil, nil, nil, sessionID, msgID, msgTotal, bitField)
+				xpcall(prefixData.callback, CallErrorHandler, prefix, handlerData, channel, sender, target, zoneChannelID, localID, name, instanceID, nil, nil, nil, sessionID, msgID, msgTotal, bitField)
 			end
 			buffer[i] = false
 			if i == msgTotal then
@@ -234,16 +232,16 @@ local function ParseInGameMessageLogged(prefix, text, kind, sender, target, zone
 end
 
 local function ParseBattleNetMessage(prefix, text, kind, bnetIDGameAccount)
-	local characterName;
-	local realmName;
+	local characterName
+	local realmName
 
 	if C_BattleNet and C_BattleNet.GetGameAccountInfoByID then
 		local gameAccountInfo = C_BattleNet.GetGameAccountInfoByID(bnetIDGameAccount)
-		characterName = gameAccountInfo.characterName;
-		realmName = gameAccountInfo.realmName;
+		characterName = gameAccountInfo.characterName
+		realmName = gameAccountInfo.realmName
 	else
-		local active, client;
-		active, characterName, client, realmName = BNGetGameAccountInfo(bnetIDGameAccount)
+		local _
+		_, characterName, _, realmName = BNGetGameAccountInfo(bnetIDGameAccount)
 	end
 	-- Build 27144: This can now be nil after removing someone from BattleTag.
 	-- Build 28807: This can be an empty string when someone is sending a message when they're offline.
@@ -289,7 +287,7 @@ function Internal:RunQueue()
 				self.isSending = false
 			end
 			if message.callback then
-				xpcall(message.callback, geterrorhandler(), message.callbackArg, didSend)
+				xpcall(message.callback, CallErrorHandler, message.callbackArg, didSend)
 			end
 		end
 		if not priority[1] then
@@ -304,16 +302,16 @@ function Internal:RunQueue()
 end
 
 function Internal:UpdateBytes()
-	local BPS, BURST = self.BPS, self.BURST
+	local bps, burst = self.BPS, self.BURST
 	if InCombatLockdown() then
-		BPS = BPS * 0.50
-		BURST = BURST * 0.50
+		bps = bps * 0.50
+		burst = burst * 0.50
 	end
 
 	local now = GetTime()
-	local newBytes = (now - self.lastByteUpdate) * BPS
-	local bytes = math.min(BURST, self.bytes + newBytes)
-	bytes = math.max(bytes, -BPS) -- Probably going to fail anyway.
+	local newBytes = (now - self.lastByteUpdate) * bps
+	local bytes = math.min(burst, self.bytes + newBytes)
+	bytes = math.max(bytes, -bps) -- Probably going to fail anyway.
 	self.bytes = bytes
 	self.lastByteUpdate = now
 
@@ -378,7 +376,7 @@ local function MessageEventFilter_SYSTEM (self, event, text)
 		return false
 	end
 	for i, func in ipairs(Internal.ErrorCallbacks) do
-		xpcall(func, geterrorhandler(), name)
+		xpcall(func, CallErrorHandler, name)
 	end
 	return true
 end
