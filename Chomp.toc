@@ -1,11 +1,11 @@
-## Interface: 80205
-## X-Interface: 80205
-## X-Interface-Required: 80205
-## X-WoW-Version: 8.2.5
-## X-WoW-Build: 31961
+## Interface: 80300
+## X-Interface: 80300
+## X-Interface-Required: 80300
+## X-WoW-Version: 8.3.0
+## X-WoW-Build: 34220
 ## Title: Chomp Message Library
 ## Author: Justin Snelgrove
-## Version: 10
+## Version: 11
 ## Notes: Battle.net and in-game messaging library with smart addon whispers.
 ## X-Category: Library
 ## X-License: ISC
