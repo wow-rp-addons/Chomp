@@ -45,8 +45,6 @@ function AddOn_Chomp.SendAddonMessage(prefix, text, kind, target, priority, queu
 		error("AddOn_Chomp.SendAddonMessage(): target: expected string, got " .. type(target), 2)
 	elseif kind == "CHANNEL" and type(target) ~= "number" then
 		error("AddOn_Chomp.SendAddonMessage(): target: expected number, got " .. type(target), 2)
-	elseif target and kind ~= "WHISPER" and kind ~= "CHANNEL" then
-		error("AddOn_Chomp.SendAddonMessage(): target: expected nil, got " .. type(target), 2)
 	elseif priority and not PRIORITIES_HASH[priority] then
 		error("AddOn_Chomp.SendAddonMessage(): priority: expected \"HIGH\", \"MEDIUM\", \"LOW\", or nil, got " .. tostring(priority), 2)
 	elseif queue and type(queue) ~= "string" then
@@ -121,8 +119,6 @@ function AddOn_Chomp.SendAddonMessageLogged(prefix, text, kind, target, priority
 		error("AddOn_Chomp.SendAddonMessageLogged(): target: expected string, got " .. type(target), 2)
 	elseif kind == "CHANNEL" and type(target) ~= "number" then
 		error("AddOn_Chomp.SendAddonMessageLogged(): target: expected number, got " .. type(target), 2)
-	elseif target and kind ~= "WHISPER" and kind ~= "CHANNEL" then
-		error("AddOn_Chomp.SendAddonMessageLogged(): target: expected nil, got " .. type(target), 2)
 	elseif priority and not PRIORITIES_HASH[priority] then
 		error("AddOn_Chomp.SendAddonMessageLogged(): priority: expected \"HIGH\", \"MEDIUM\", \"LOW\", or nil, got " .. tostring(priority), 2)
 	elseif queue and type(queue) ~= "string" then
@@ -197,8 +193,6 @@ function AddOn_Chomp.SendChatMessage(text, kind, language, target, priority, que
 		error("AddOn_Chomp.SendChatMessage(): target: expected string, got " .. type(target), 2)
 	elseif kind == "CHANNEL" and type(target) ~= "number" then
 		error("AddOn_Chomp.SendChatMessage(): target: expected number, got " .. type(target), 2)
-	elseif target and kind ~= "WHISPER" and kind ~= "CHANNEL" then
-		error("AddOn_Chomp.SendChatMessage(): target: expected nil, got " .. type(target), 2)
 	elseif priority and not PRIORITIES_HASH[priority] then
 		error("AddOn_Chomp.SendChatMessage(): priority: expected \"HIGH\", \"MEDIUM\", \"LOW\", or nil, got " .. tostring(priority), 2)
 	elseif queue and type(queue) ~= "string" then
