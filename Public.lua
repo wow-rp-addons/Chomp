@@ -417,12 +417,14 @@ local function BNGetIDGameAccount(name)
 	end
 	name = AddOn_Chomp.NameMergedRealm(name)
 	for i = 1, BNGetNumFriends() do
-		for j = 1, BNGetNumFriendGameAccounts(i) do
-			local _, characterName, client, realmName, _, faction, _, _, _, _, _, _, _, _, isConnected, bnetIDGameAccount = BNGetFriendGameAccountInfo(i, j)
-			if isConnected and client == BNET_CLIENT_WOW then
-				local realm = realmName and realmName ~= "" and (realmName:gsub("%s*%-*", "")) or nil
-				if realm and (not Internal.SameRealm[realm] or faction ~= UnitFactionGroup("player")) and name == AddOn_Chomp.NameMergedRealm(characterName, realm) then
-					return bnetIDGameAccount
+		for j = 1, Internal:GetBNFriendNumGameAccounts(i) do
+			local account = Internal:GetBNFriendGameAccountInfo(i, j)
+			if account.isOnline and account.clientProgram == BNET_CLIENT_WOW then
+				local realm = account.realmName and (account.realmName:gsub("%s*%-*", "")) or nil
+				if realm
+					and (not Internal.SameRealm[realm] or account.factionName ~= UnitFactionGroup("player"))
+					and name == AddOn_Chomp.NameMergedRealm(account.characterName, realm) then
+					return account.gameAccountID
 				end
 			end
 		end

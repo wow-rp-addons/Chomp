@@ -24,6 +24,8 @@ stds.wow = {
 		C_BattleNet = {
 			fields = {
 				"GetGameAccountInfoByID",
+				"GetFriendNumGameAccounts",
+				"GetFriendGameAccountInfo",
 			},
 		},
 
@@ -92,5 +94,7 @@ stds.wowstd = {
 				"bor",
 			},
 		},
+
+		"wipe",
 	},
 }

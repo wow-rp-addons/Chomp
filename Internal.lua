@@ -232,17 +232,10 @@ local function ParseInGameMessageLogged(prefix, text, kind, sender, target, zone
 end
 
 local function ParseBattleNetMessage(prefix, text, kind, bnetIDGameAccount)
-	local characterName
-	local realmName
+	local accountInfo   = Internal:GetBNGameAccountInfo(bnetIDGameAccount)
+	local characterName = accountInfo.characterName
+	local realmName     = accountInfo.realmName
 
-	if C_BattleNet and C_BattleNet.GetGameAccountInfoByID then
-		local gameAccountInfo = C_BattleNet.GetGameAccountInfoByID(bnetIDGameAccount)
-		characterName = gameAccountInfo.characterName
-		realmName = gameAccountInfo.realmName
-	else
-		local _
-		_, characterName, _, realmName = BNGetGameAccountInfo(bnetIDGameAccount)
-	end
 	-- Build 27144: This can now be nil after removing someone from BattleTag.
 	-- Build 28807: This can be an empty string when someone is sending a message when they're offline.
 	if not characterName or characterName == "" then
@@ -432,6 +425,93 @@ local function HookC_ClubEditMessage(clubID, streamID, messageID, text)
 end
 
 --[[
+	BATTLE.NET WRAPPER API
+]]
+
+local bnCacheMetatable = setmetatable({}, { __mode = "v" })
+local bnGameAccounts = setmetatable({}, bnCacheMetatable)
+local bnFriendGameAccounts = {}
+
+local function PackBNGameAccountInfo(arg1, arg2, arg3, arg4, arg5, arg6,
+									 arg7, arg8, arg9, arg10, arg11, arg12,
+									 arg13, arg14, arg15, arg16, arg17, arg18,
+									 arg19, arg20, arg21, arg22)
+	return {
+		hasFocus       = arg1 ~= 0 and arg or nil,
+		characterName  = arg2 ~= "" and arg or nil,
+		clientProgram  = arg3,
+		realmName      = arg4 ~= "" and arg or nil,
+		realmID        = arg5 ~= 0 and arg or nil,
+		factionName    = arg6 ~= "" and arg or nil,
+		raceName       = arg7 ~= "" and arg or nil,
+		className      = arg8 ~= "" and arg or nil,
+		areaName       = arg10 ~= "" and arg or nil,
+		characterLevel = arg11 ~= "" and arg or nil,
+		richPresence   = arg12 ~= "" and arg or nil,
+		isOnline       = arg15,
+		gameAccountID  = arg16 ~= 0 and arg or nil,
+		isGameAFK      = arg18,
+		isGameBusy     = arg19,
+		playerGuid     = arg20 ~= 0 and arg or nil,
+		wowProjectID   = arg21 ~= 0 and arg or nil,
+		isWowMobile    = arg22,
+	}
+end
+
+local function PurgeBNGameAccounts()
+	wipe(bnGameAccounts)
+end
+
+local function PurgeBNFriendGameAccounts()
+	-- The odds of the number of friends changing is quite low, so we don't
+	-- purge the outer table but instead eliminate the per-friend accounts.
+
+	for _, accounts in pairs(bnFriendGameAccounts) do
+		wipe(accounts)
+	end
+end
+
+local function QueryBNGameAccount(accountID)
+	if C_BattleNet then
+		return C_BattleNet.GetGameAccountInfoByID(accountID)
+	else
+		return PackBNGameAccountInfo(BNGetGameAccountInfo(accountID))
+	end
+end
+
+local function QueryBNFriendGameAccount(friendIndex, accountIndex)
+	if C_BattleNet then
+		return C_BattleNet.GetFriendGameAccountInfo(friendIndex, accountIndex)
+	else
+		return PackBNGameAccountInfo(BNGetFriendGameAccountInfo(friendIndex, accountIndex))
+	end
+end
+
+function Internal:GetBNFriendNumGameAccounts(friendIndex)
+	if C_BattleNet then
+		return C_BattleNet.GetFriendNumGameAccounts(friendIndex)
+	else
+		return BNGetNumFriendGameAccounts(friendIndex)
+	end
+end
+
+function Internal:GetBNGameAccountInfo(accountID)
+	local accountInfo = bnGameAccounts[accountID] or QueryBNGameAccount(accountID)
+	bnGameAccounts[accountID] = accountInfo
+	return accountInfo
+end
+
+function Internal:GetBNFriendGameAccountInfo(friendIndex, accountIndex)
+	local accounts = bnFriendGameAccounts[friendIndex] or setmetatable({}, bnCacheMetatable)
+	local accountInfo = accounts[accountIndex] or QueryBNFriendGameAccount(friendIndex, accountIndex)
+
+	accounts[accountIndex] = accountInfo
+	bnFriendGameAccounts[friendIndex] = accounts
+
+	return accountInfo
+end
+
+--[[
 	FRAME SCRIPTS
 ]]
 
@@ -442,6 +522,13 @@ Internal:RegisterEvent("BN_CHAT_MSG_ADDON")
 Internal:RegisterEvent("PLAYER_LOGIN")
 Internal:RegisterEvent("PLAYER_LEAVING_WORLD")
 Internal:RegisterEvent("PLAYER_ENTERING_WORLD")
+Internal:RegisterEvent("BN_CONNECTED")
+Internal:RegisterEvent("BN_DISCONNECTED")
+Internal:RegisterEvent("BN_FRIEND_ACCOUNT_OFFLINE")
+Internal:RegisterEvent("BN_FRIEND_ACCOUNT_ONLINE")
+Internal:RegisterEvent("BN_FRIEND_INFO_CHANGED")
+Internal:RegisterEvent("BN_INFO_CHANGED")
+Internal:RegisterEvent("FRIENDLIST_UPDATE")
 
 Internal:SetScript("OnEvent", function(self, event, ...)
 	if event == "CHAT_MSG_ADDON" then
@@ -450,6 +537,16 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 		HandleMessageIn(ParseInGameMessageLogged(...))
 	elseif event == "BN_CHAT_MSG_ADDON" then
 		HandleMessageIn(ParseBattleNetMessage(...))
+	elseif event == "BN_CONNECTED"
+		or event == "BN_DISCONNECTED"
+		or event == "BN_FRIEND_ACCOUNT_OFFLINE"
+		or event == "BN_FRIEND_ACCOUNT_ONLINE"
+		or event == "BN_FRIEND_INFO_CHANGED"
+		or event == "FRIENDLIST_UPDATE" then
+		-- Overeager purging of the cache is to be 100% sure we aren't
+		-- missing events; the BN events are sparsely documented.
+		PurgeBNGameAccounts()
+		PurgeBNFriendGameAccounts()
 	elseif event == "PLAYER_LOGIN" then
 		_G.__chomp_internal = nil
 		hooksecurefunc(C_ChatInfo, "SendAddonMessage", HookSendAddonMessage)
