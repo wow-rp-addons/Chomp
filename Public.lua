@@ -577,8 +577,11 @@ function AddOn_Chomp.CheckReportGUID(prefix, guid)
 		return false, "BATTLENET"
 	end
 	ReportLocation:SetGUID(guid)
-	local isReportable = C_ChatInfo.CanReportPlayer(ReportLocation)
-	return isReportable, "LOGGED"
+	if C_ReportSystem then
+		return C_ReportSystem.CanReportPlayer(ReportLocation), "LOGGED"
+	else
+		return C_ChatInfo.CanReportPlayer(ReportLocation), "LOGGED"
+	end
 end
 
 function AddOn_Chomp.ReportGUID(prefix, guid, customMessage)
@@ -594,7 +597,14 @@ function AddOn_Chomp.ReportGUID(prefix, guid, customMessage)
 	end
 	local canReport, reason = AddOn_Chomp.CheckReportGUID(prefix, guid)
 	if canReport then
-		C_ChatInfo.ReportPlayer(PLAYER_REPORT_TYPE_LANGUAGE, ReportLocation, ("Report for logged addon prefix: %s. %s"):format(prefix, customMessage or "Objectionable content in logged addon messages."))
+		if C_ReportSystem then
+			local _, _, _, _, _, name, realm = GetPlayerInfoByGUID(guid);
+			if name and realm then
+				C_ReportSystem.OpenReportPlayerDialog(PLAYER_REPORT_TYPE_LANGUAGE, name .. "-" .. realm, ReportLocation)
+			end
+		else
+			C_ChatInfo.ReportPlayer(PLAYER_REPORT_TYPE_LANGUAGE, ReportLocation, ("Report for logged addon prefix: %s. %s"):format(prefix, customMessage or "Objectionable content in logged addon messages."))
+		end
 		return true, reason
 	end
 	return false, reason
