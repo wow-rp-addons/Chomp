@@ -417,12 +417,14 @@ local function BNGetIDGameAccount(name)
 	end
 	name = AddOn_Chomp.NameMergedRealm(name)
 	for i = 1, BNGetNumFriends() do
-		for j = 1, BNGetNumFriendGameAccounts(i) do
-			local _, characterName, client, realmName, _, faction, _, _, _, _, _, _, _, _, isConnected, bnetIDGameAccount = BNGetFriendGameAccountInfo(i, j)
-			if isConnected and client == BNET_CLIENT_WOW then
-				local realm = realmName and realmName ~= "" and (realmName:gsub("%s*%-*", "")) or nil
-				if realm and (not Internal.SameRealm[realm] or faction ~= UnitFactionGroup("player")) and name == AddOn_Chomp.NameMergedRealm(characterName, realm) then
-					return bnetIDGameAccount
+		for j = 1, Internal:GetBNFriendNumGameAccounts(i) do
+			local account = Internal:GetBNFriendGameAccountInfo(i, j)
+			if account.isOnline and account.clientProgram == BNET_CLIENT_WOW then
+				local realm = account.realmName and (account.realmName:gsub("%s*%-*", "")) or nil
+				if realm
+					and (not Internal.SameRealm[realm] or account.factionName ~= UnitFactionGroup("player"))
+					and name == AddOn_Chomp.NameMergedRealm(account.characterName, realm) then
+					return account.gameAccountID
 				end
 			end
 		end
@@ -575,8 +577,11 @@ function AddOn_Chomp.CheckReportGUID(prefix, guid)
 		return false, "BATTLENET"
 	end
 	ReportLocation:SetGUID(guid)
-	local isReportable = C_ChatInfo.CanReportPlayer(ReportLocation)
-	return isReportable, "LOGGED"
+	if C_ReportSystem then
+		return C_ReportSystem.CanReportPlayer(ReportLocation), "LOGGED"
+	else
+		return C_ChatInfo.CanReportPlayer(ReportLocation), "LOGGED"
+	end
 end
 
 function AddOn_Chomp.ReportGUID(prefix, guid, customMessage)
@@ -592,7 +597,14 @@ function AddOn_Chomp.ReportGUID(prefix, guid, customMessage)
 	end
 	local canReport, reason = AddOn_Chomp.CheckReportGUID(prefix, guid)
 	if canReport then
-		C_ChatInfo.ReportPlayer(PLAYER_REPORT_TYPE_LANGUAGE, ReportLocation, ("Report for logged addon prefix: %s. %s"):format(prefix, customMessage or "Objectionable content in logged addon messages."))
+		if C_ReportSystem then
+			local _, _, _, _, _, name, realm = GetPlayerInfoByGUID(guid);
+			if name and realm then
+				C_ReportSystem.OpenReportPlayerDialog(PLAYER_REPORT_TYPE_LANGUAGE, name .. "-" .. realm, ReportLocation)
+			end
+		else
+			C_ChatInfo.ReportPlayer(PLAYER_REPORT_TYPE_LANGUAGE, ReportLocation, ("Report for logged addon prefix: %s. %s"):format(prefix, customMessage or "Objectionable content in logged addon messages."))
+		end
 		return true, reason
 	end
 	return false, reason
