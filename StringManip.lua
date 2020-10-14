@@ -22,8 +22,8 @@ local Internal = __chomp_internal
 
 local SAFE_BYTES = {
 	[10] = true, -- newline
-	[61] = true, -- equals
 	[92] = true, -- backslash
+	[96] = true, -- grave
 	[124] = true, -- pipe
 }
 
