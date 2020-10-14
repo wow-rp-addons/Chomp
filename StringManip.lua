@@ -85,24 +85,20 @@ function Serialize.table(input)
     local floor     = math.floor
     local strformat = string.format
     local strfind   = string.find
-    local type      = type
+	local type      = type
 
-    -- `t` is our output buffer for each record, `n` is the number of entries
-    -- to remove calls to the O(log n) `#` operator.
-    local t = {}
-    local n = 0
+    local output = {}
 
     -- Handle array parts of tables first from `t[1] .. t[n-1]` where `n` is
     -- the index of the first nil value.
     local numArray = 0
     for i, v in ipairs(input) do
-        t[n + i] = Serialize[type(v)](v)
+        output[i] = Serialize[type(v)](v)
         numArray = i
     end
 
-    -- Optimization; advance `n` by the array size instead of doing it once
-    -- per iteration in the above loop.
-    n = n + numArray
+	-- `n` is our current offset for additional entries in the table.
+    local n = numArray
 
     -- Handle the remaining key/value pairs. We want to skip any integral keys
     -- that are within the `t[1] .. t[numArray]` range.
@@ -111,16 +107,16 @@ function Serialize.table(input)
         if typeK ~= "number" or k > numArray or k < 1 or k ~= floor(k) then
             n = n + 1
 
-            if typeK == "string" and strfind(k, "^[%a_][%w_]*$") then
+            if typeK == "string" and strfind(k, "^[a-zA-Z_][a-zA-Z0-9_]*$") then
                 -- Optimization for identifier-like string keys (no braces!).
-                t[n] = strformat("%s=%s", k, Serialize[typeV](v))
+                output[n] = strformat("%s=%s", k, Serialize[typeV](v))
             else
-                t[n] = strformat("[%s]=%s", Serialize[typeK](k), Serialize[typeV](v))
+                output[n] = strformat("[%s]=%s", Serialize[typeK](k), Serialize[typeV](v))
             end
         end
     end
 
-	return strformat("{%s}", table.concat(t, ",", 1, n))
+	return strformat("{%s}", table.concat(output, ","))
 end
 
 Internal.Serialize = Serialize
