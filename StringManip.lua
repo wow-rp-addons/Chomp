@@ -22,8 +22,8 @@ local Internal = __chomp_internal
 
 local SAFE_BYTES = {
 	[10] = true, -- newline
-	[61] = true, -- equals
 	[92] = true, -- backslash
+	[96] = true, -- grave
 	[124] = true, -- pipe
 }
 
@@ -61,7 +61,7 @@ local Serialize = setmetatable({}, {
 -- This is a meta-type used as a default handler for unknown value types
 -- which always errors; no need to explicitly check types elsewhere.
 Serialize["default"] = function(input)
-    error("invalid type: " .. type(input))
+	error("invalid type: " .. type(input))
 end
 
 Serialize["nil"] = function(input)
@@ -81,46 +81,42 @@ function Serialize.string(input)
 end
 
 function Serialize.table(input)
-    -- These functions are called in loops, so upvalue them eagerly.
-    local floor     = math.floor
-    local strformat = string.format
-    local strfind   = string.find
-    local type      = type
+	-- These functions are called in loops, so upvalue them eagerly.
+	local floor     = math.floor
+	local strformat = string.format
+	local strfind   = string.find
+	local type      = type
 
-    -- `t` is our output buffer for each record, `n` is the number of entries
-    -- to remove calls to the O(log n) `#` operator.
-    local t = {}
-    local n = 0
+	local output = {}
 
-    -- Handle array parts of tables first from `t[1] .. t[n-1]` where `n` is
-    -- the index of the first nil value.
-    local numArray = 0
-    for i, v in ipairs(input) do
-        t[n + i] = Serialize[type(v)](v)
-        numArray = i
-    end
+	-- Handle array parts of tables first from `t[1] .. t[n]` where `n` is
+	-- the last index before the first nil value.
+	local numArray = 0
+	for i, v in ipairs(input) do
+		output[i] = Serialize[type(v)](v)
+		numArray = i
+	end
 
-    -- Optimization; advance `n` by the array size instead of doing it once
-    -- per iteration in the above loop.
-    n = n + numArray
+	-- `n` is our current offset for additional entries in the table.
+	local n = numArray
 
-    -- Handle the remaining key/value pairs. We want to skip any integral keys
-    -- that are within the `t[1] .. t[numArray]` range.
-    for k, v in pairs(input) do
-        local typeK, typeV = type(k), type(v)
-        if typeK ~= "number" or k > numArray or k < 1 or k ~= floor(k) then
-            n = n + 1
+	-- Handle the remaining key/value pairs. We want to skip any integral keys
+	-- that are within the `t[1] .. t[numArray]` range.
+	for k, v in pairs(input) do
+		local typeK, typeV = type(k), type(v)
+		if typeK ~= "number" or k > numArray or k < 1 or k ~= floor(k) then
+			n = n + 1
 
-            if typeK == "string" and strfind(k, "^[%a_][%w_]*$") then
-                -- Optimization for identifier-like string keys (no braces!).
-                t[n] = strformat("%s=%s", k, Serialize[typeV](v))
-            else
-                t[n] = strformat("[%s]=%s", Serialize[typeK](k), Serialize[typeV](v))
-            end
-        end
-    end
+			if typeK == "string" and strfind(k, "^[a-zA-Z_][a-zA-Z0-9_]*$") then
+				-- Optimization for identifier-like string keys (no braces!).
+				output[n] = strformat("%s=%s", k, Serialize[typeV](v))
+			else
+				output[n] = strformat("[%s]=%s", Serialize[typeK](k), Serialize[typeV](v))
+			end
+		end
+	end
 
-	return strformat("{%s}", table.concat(t, ",", 1, n))
+	return strformat("{%s}", table.concat(output, ","))
 end
 
 Internal.Serialize = Serialize
@@ -277,7 +273,7 @@ end
 function AddOn_Chomp.EncodeQuotedPrintable(text)
 	if type(text) ~= "string" then
 		error("AddOn_Chomp.EncodeQuotedPrintable(): text: expected string, got " .. type(text), 2)
-    end
+	end
 
 	-- First, the quoted-printable escape character.
 	text = text:gsub("`", CharToQuotedPrintable)
