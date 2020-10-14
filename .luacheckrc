@@ -11,7 +11,7 @@ max_string_line_length = false
 max_comment_line_length = false
 
 -- Add exceptions for external libraries.
-std = "lua51+wow+wowstd"
+std = "lua51+wow+wowstd+utf8lib"
 
 globals = {
 	"__chomp_internal",
@@ -96,5 +96,15 @@ stds.wowstd = {
 		},
 
 		"wipe",
+	},
+}
+
+stds.utf8lib = {
+	read_globals = {
+		string = {
+			fields = {
+				"utf8lower",
+			},
+		},
 	},
 }
