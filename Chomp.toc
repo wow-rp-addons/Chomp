@@ -5,7 +5,7 @@
 ## X-WoW-Build: 36163
 ## Title: Chomp Message Library
 ## Author: Justin Snelgrove
-## Version: 12
+## Version: 13
 ## Notes: Battle.net and in-game messaging library with smart addon whispers.
 ## X-Category: Library
 ## X-License: ISC
