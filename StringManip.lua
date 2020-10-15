@@ -54,6 +54,10 @@ function AddOn_Chomp.NameMergedRealm(name, realm)
 	return FULL_PLAYER_NAME:format(name, (realm:gsub("[%s%-]", "")))
 end
 
+function AddOn_Chomp.NameSplitRealm(nameRealm)
+	return string.match(nameRealm, FULL_PLAYER_SPLIT)
+end
+
 local Serialize = setmetatable({}, {
 	__index = function(self) return self["default"] end
 })
@@ -382,4 +386,27 @@ function AddOn_Chomp.SafeSubString(text, first, last, textLen)
 		end
 	end
 	return (text:sub(first, last - offset)), offset
+end
+
+function AddOn_Chomp.InsensitiveStringEquals(a, b)
+	if a == b then
+		return true
+	end
+
+	if type(a) ~= "string" or type(b) ~= "string" then
+		return false
+	end
+
+	-- If the UTF8 library has been loaded (which globally mutates the
+	-- string table - actually helpful here!) we'll prefer that for any case
+	-- insensitive comparisons, since string.lower will use the process
+	-- locale which is likely C, so ASCII only.
+	--
+	-- The UTF8 library is left optional as it's quite large. You can pull it
+	-- in if you want better behaviour in non-English locales.
+	--
+	-- See: <https://www.curseforge.com/wow/addons/utf8>
+
+	local lower = string.utf8lower or string.lower
+	return lower(a) == lower(b)
 end

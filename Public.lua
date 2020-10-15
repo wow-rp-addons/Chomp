@@ -423,7 +423,7 @@ local function BNGetIDGameAccount(name)
 				local realm = account.realmName and (account.realmName:gsub("%s*%-*", "")) or nil
 				if realm
 					and (not Internal.SameRealm[realm] or account.factionName ~= UnitFactionGroup("player"))
-					and name == AddOn_Chomp.NameMergedRealm(account.characterName, realm) then
+					and AddOn_Chomp.InsensitiveStringEquals(name, AddOn_Chomp.NameMergedRealm(account.characterName, realm)) then
 					return account.gameAccountID
 				end
 			end
