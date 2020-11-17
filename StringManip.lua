@@ -152,6 +152,44 @@ function IsTableSafe(t)
 	return true
 end
 
+local function IsStringLoadSafe(str)
+	local strbyte = string.byte
+	local strfind = string.find
+
+	local offset = 1
+	local length = #str
+
+	local inQuotedString = false
+
+	repeat
+		offset = strfind(str, [=[["\(]]=], offset)
+
+		if not offset then
+			break
+		end
+
+		local byte = strbyte(str, offset, offset)
+
+		if byte == 0x22 then
+			inQuotedString = not inQuotedString
+		elseif inQuotedString and byte == 0x5c then
+			-- Found backslash inside a string, skip next if it's a quote or
+			-- another backslash.
+			local next = strbyte(str, offset + 1, offset + 1)
+			if next == 0x22 or next == 0x5c then
+				offset = offset + 1
+			end
+		elseif not inQuotedString then
+			-- Found either a backslash or left-paren outside a string.
+			return false, string.format("unexpected character \"%1$s\" at offset %2$d", string.char(byte), offset)
+		end
+
+		offset = offset + 1
+	until offset > length
+
+	return true
+end
+
 local EMPTY_ENV = setmetatable({}, {
 	__newindex = function() end,
 	__metatable = false,
@@ -161,13 +199,22 @@ function AddOn_Chomp.Deserialize(text)
 	if type(text) ~= "string" then
 		error("AddOn_Chomp.Deserialize(): text: expected string, got " .. type(text), 2)
 	end
-	local func = loadstring(("return %s"):format(text))
-	if not func then
-		error("AddOn_Chomp.Deserialize(): text: could not be loaded via loadstring", 2)
+
+	local isSafe, reason = IsStringLoadSafe(text)
+	if not isSafe then
+		error("AddOn_Chomp.Deserialize(): text: " .. reason, 2)
 	end
+
+	local func, loadError = loadstring(("return %s"):format(text))
+	if not func then
+		error("AddOn_Chomp.Deserialize(): text: could not be deserialized: " .. tostring(loadError), 2)
+	end
+
 	setfenv(func, EMPTY_ENV)
+
 	local retSuccess, ret = pcall(func)
 	local retType = type(ret)
+
 	if not retSuccess then
 		error("AddOn_Chomp.Deserialize(): text: error while reading data", 2)
 	elseif not Serialize[retType] then
@@ -175,6 +222,7 @@ function AddOn_Chomp.Deserialize(text)
 	elseif retType == "table" and text:find("function", nil, true) and not IsTableSafe(ret) then
 		error("AddOn_Chomp.Deserialize(): text: deserialized table included forbidden type", 2)
 	end
+
 	return ret
 end
 
