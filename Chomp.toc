@@ -1,11 +1,11 @@
-## Interface: 90001
-## X-Interface: 90001
-## X-Interface-Required: 90001
-## X-WoW-Version: 9.0.1
-## X-WoW-Build: 36163
+## Interface: 90002
+## X-Interface: 90002
+## X-Interface-Required: 90002
+## X-WoW-Version: 9.0.2
+## X-WoW-Build: 36639
 ## Title: Chomp Message Library
 ## Author: Justin Snelgrove
-## Version: 14
+## Version: 15
 ## Notes: Battle.net and in-game messaging library with smart addon whispers.
 ## X-Category: Library
 ## X-License: ISC
