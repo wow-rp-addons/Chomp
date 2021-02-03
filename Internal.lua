@@ -140,9 +140,9 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 
 	local hasVersion16 = bit.band(bitField, Internal.BITS.VERSION16) ~= 0
 	if hasVersion16 then
-		prefixData[sender].supportsEncodingV2 = true
+		prefixData[sender].supportsCodecV2 = true
 	else
-		prefixData[sender].supportsEncodingV2 = false
+		prefixData[sender].supportsCodecV2 = false
 	end
 
 	local isBroadcast = bit.band(bitField, Internal.BITS.BROADCAST) == Internal.BITS.BROADCAST
@@ -254,11 +254,11 @@ local function ParseBattleNetMessage(prefix, text, kind, bnetIDGameAccount)
 	return prefix, text, ("%s:BATTLENET"):format(kind), name, AddOn_Chomp.NameMergedRealm(UnitName("player")), 0, 0, "", 0
 end
 
-function Internal:TargetSupportsEncodingV2(prefix, target)
+function Internal:TargetSupportsCodecV2(prefix, target)
 	local prefixData = self.Prefixes[prefix]
 	local targetData = prefixData and prefixData[target] or nil
 
-	return targetData and targetData.supportsEncodingV2 or false
+	return targetData and targetData.supportsCodecV2 or false
 end
 
 function Internal:GetCodecVersionFromBitfield(bitField)

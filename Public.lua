@@ -531,7 +531,7 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 
 	local codecVersion
 
-	if Internal:TargetSupportsEncodingV2(prefix, target) then
+	if Internal:TargetSupportsCodecV2(prefix, target) then
 		codecVersion = 2
 		bitField = bit.bor(bitField, Internal.BITS.CODECV2)
 	else
