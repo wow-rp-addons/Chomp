@@ -23,8 +23,8 @@ local Internal = __chomp_internal
 local SAFE_BYTES = {
 	[10] = true, -- newline
 	[92] = true, -- backslash
-	[96] = true, -- grave
 	[124] = true, -- pipe
+	[126] = true, -- tilde
 }
 
 -- Realm part matching is greedy, as realm names will rarely have dashes, but
@@ -255,7 +255,7 @@ function AddOn_Chomp.CheckLoggedContents(text)
 end
 
 local function CharToQuotedPrintable(c)
-	return ("`%02X"):format(c:byte())
+	return ("~%02X"):format(c:byte())
 end
 
 local function StringToQuotedPrintable(s)
@@ -268,7 +268,7 @@ end
 
 function Internal.EncodeQuotedPrintable(text, restrictBinary)
 	-- First, the quoted-printable escape character.
-	text = text:gsub("`", CharToQuotedPrintable)
+	text = text:gsub("~", CharToQuotedPrintable)
 
 	if not restrictBinary then
 		-- Just NUL, which never works normally.
@@ -328,7 +328,7 @@ function AddOn_Chomp.EncodeQuotedPrintable(text)
 	end
 
 	-- First, the quoted-printable escape character.
-	text = text:gsub("`", CharToQuotedPrintable)
+	text = text:gsub("~", CharToQuotedPrintable)
 
 	-- Logged messages don't permit UI escape sequences.
 	text = text:gsub("|", CharToQuotedPrintable)
@@ -388,12 +388,12 @@ local function DecodeSafeByte(b)
 	if SAFE_BYTES[byteNum] then
 		return string.char(byteNum)
 	else
-		return ("`%02X"):format(byteNum)
+		return ("~%02X"):format(byteNum)
 	end
 end
 
 function Internal.DecodeQuotedPrintable(text, restrictBinary)
-	local decodedText = text:gsub("`(%x%x)", not restrictBinary and DecodeAnyByte or DecodeSafeByte)
+	local decodedText = text:gsub("~(%x%x)", not restrictBinary and DecodeAnyByte or DecodeSafeByte)
 	return decodedText
 end
 
@@ -401,7 +401,7 @@ function AddOn_Chomp.DecodeQuotedPrintable(text)
 	if type(text) ~= "string" then
 		error("AddOn_Chomp.DecodeQuotedPrintable(): text: expected string, got " .. type(text), 2)
 	end
-	local decodedText = text:gsub("`(%x%x)", DecodeAnyByte)
+	local decodedText = text:gsub("~(%x%x)", DecodeAnyByte)
 	return decodedText
 end
 
@@ -424,10 +424,10 @@ function AddOn_Chomp.SafeSubString(text, first, last, textLen)
 	end
 	if textLen > last then
 		local b3, b2, b1 = text:byte(last - 2, last)
-		-- 96 is numeric code for "`"
-		if b1 == 96 or (b1 >= 194 and b1 <= 244) then
+		-- 126 is numeric code for "~"
+		if b1 == 126 or (b1 >= 194 and b1 <= 244) then
 			offset = 1
-		elseif b2 == 96 or (b2 >= 224 and b2 <= 244) then
+		elseif b2 == 126 or (b2 >= 224 and b2 <= 244) then
 			offset = 2
 		elseif b3 >= 240 and b3 <= 244 then
 			offset = 3
