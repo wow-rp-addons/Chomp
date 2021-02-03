@@ -443,10 +443,11 @@ local function SplitAndSend(sendFunc, maxSize, bitField, prefix, text, ...)
 	local sessionID = nextSessionID
 	nextSessionID = (nextSessionID + 1) % 4096
 	local position = 1
+	local codecVersion = Internal:GetCodecVersionFromBitfield(bitField)
 	while position <= textLen do
 		-- Only *need* to do a safe substring for encoded channels, but doing so
 		-- always shouldn't hurt.
-		local msgText, offset = AddOn_Chomp.SafeSubString(text, position, position + maxSize - 1, textLen)
+		local msgText, offset = AddOn_Chomp.SafeSubString(text, position, position + maxSize - 1, textLen, codecVersion)
 		if offset > 0 then
 			-- Update total offset and total message number if needed.
 			totalOffset = totalOffset + offset
@@ -511,6 +512,8 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 	end
 
 	local bitField = 0x000
+	bitField = bit.bor(bitField, Internal.BITS.VERSION16)
+
 	if messageOptions.serialize then
 		bitField = bit.bor(bitField, Internal.BITS.SERIALIZE)
 		data = AddOn_Chomp.Serialize(data)
@@ -525,6 +528,16 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 	if kind == "WHISPER" then
 		target = AddOn_Chomp.NameMergedRealm(target)
 	end
+
+	local codecVersion
+
+	if Internal:TargetSupportsEncodingV2(prefix, target) then
+		codecVersion = 2
+		bitField = bit.bor(bitField, Internal.BITS.CODECV2)
+	else
+		codecVersion = 1
+	end
+
 	local queue = ("%s%s%s"):format(prefix, kind, tostring(target) or "")
 
 	if kind == "WHISPER" then
@@ -532,7 +545,7 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 		-- crossrealm targets.
 		local bnetIDGameAccount = BNGetIDGameAccount(target)
 		if bnetIDGameAccount then
-			ToBattleNet(bitField, prefix, Internal.EncodeQuotedPrintable(data, false), kind, bnetIDGameAccount, messageOptions.priority, messageOptions.queue or queue)
+			ToBattleNet(bitField, prefix, Internal.EncodeQuotedPrintable(data, false, codecVersion), kind, bnetIDGameAccount, messageOptions.priority, messageOptions.queue or queue)
 			return "BATTLENET"
 		end
 		local targetUnit = Ambiguate(target, "none")
@@ -550,7 +563,7 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 		end
 	end
 	if not messageOptions.binaryBlob then
-		ToInGameLogged(bitField, prefix, Internal.EncodeQuotedPrintable(data, true), kind, target, messageOptions.priority, messageOptions.queue or queue)
+		ToInGameLogged(bitField, prefix, Internal.EncodeQuotedPrintable(data, true, codecVersion), kind, target, messageOptions.priority, messageOptions.queue or queue)
 		return "LOGGED"
 	end
 	ToInGame(bitField, prefix, data, kind, target, messageOptions.priority, messageOptions.queue or queue)

@@ -68,11 +68,11 @@ end
 
 Internal.BITS = {
 	SERIALIZE = 0x001,
-	UNUSEDA   = 0x002,
+	CODECV2   = 0x002,  -- Indicates the message should be processed with codec version 2. Relies upon VERSION16.
 	UNUSED9   = 0x004,
-	UNUSES8   = 0x008,
+	VERSION16 = 0x008,  -- Indicates v16+ of Chomp is in use from the sender.
 	BROADCAST = 0x010,
-	UNUSED6   = 0x020,
+	NOTUSED6  = 0x020,  -- This is unused but won't report as such on receipt; use sparingly!
 	UNUSED5   = 0x040,
 	UNUSED4   = 0x080,
 	UNUSED3   = 0x100,
@@ -109,18 +109,20 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 		return
 	end
 
-	local method = channel:match("%:(%u+)$")
-	if method == "BATTLENET" or method == "LOGGED" then
-		text = Internal.DecodeQuotedPrintable(text, method == "LOGGED")
-	end
-
 	local bitField, sessionID, msgID, msgTotal, userText = text:match("^(%x%x%x)(%x%x%x)(%x%x%x)(%x%x%x)(.*)$")
 	bitField = bitField and tonumber(bitField, 16) or 0
 	sessionID = sessionID and tonumber(sessionID, 16) or -1
 	msgID = msgID and tonumber(msgID, 16) or 1
 	msgTotal = msgTotal and tonumber(msgTotal, 16) or 1
+
 	if userText then
 		text = userText
+	end
+
+	local codecVersion = Internal:GetCodecVersionFromBitfield(bitField)
+	local method = channel:match("%:(%u+)$")
+	if method == "BATTLENET" or method == "LOGGED" then
+		text = Internal.DecodeQuotedPrintable(text, method == "LOGGED", codecVersion)
 	end
 
 	if bit.bor(bitField, Internal.KNOWN_BITS) ~= Internal.KNOWN_BITS or bit.band(bitField, Internal.BITS.DEPRECATE) == Internal.BITS.DEPRECATE then
@@ -134,6 +136,13 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 
 	if not prefixData[sender] then
 		prefixData[sender] = {}
+	end
+
+	local hasVersion16 = bit.band(bitField, Internal.BITS.VERSION16) ~= 0
+	if hasVersion16 then
+		prefixData[sender].supportsEncodingV2 = true
+	else
+		prefixData[sender].supportsEncodingV2 = false
 	end
 
 	local isBroadcast = bit.band(bitField, Internal.BITS.BROADCAST) == Internal.BITS.BROADCAST
@@ -243,6 +252,17 @@ local function ParseBattleNetMessage(prefix, text, kind, bnetIDGameAccount)
 	end
 	local name = AddOn_Chomp.NameMergedRealm(characterName, realmName)
 	return prefix, text, ("%s:BATTLENET"):format(kind), name, AddOn_Chomp.NameMergedRealm(UnitName("player")), 0, 0, "", 0
+end
+
+function Internal:TargetSupportsEncodingV2(prefix, target)
+	local prefixData = self.Prefixes[prefix]
+	local targetData = prefixData and prefixData[target] or nil
+
+	return targetData and targetData.supportsEncodingV2 or false
+end
+
+function Internal:GetCodecVersionFromBitfield(bitField)
+	return (bit.band(bitField, Internal.BITS.CODECV2) ~= 0) and 2 or 1;
 end
 
 --[[
