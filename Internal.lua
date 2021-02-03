@@ -129,7 +129,7 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 		-- Uh, found an unknown bit, or a bit we're explicitly not to parse.
 		if not oneTimeError then
 			oneTimeError = true
-			error("AddOn_Chomp: Recieved an addon message that cannot be parsed, check your addons for updates. (This message will only display once per session, but there may be more unusable addon messages.)")
+			error("AddOn_Chomp: Received an addon message that cannot be parsed, check your addons for updates. (This message will only display once per session, but there may be more unusable addon messages.)")
 		end
 		return
 	end

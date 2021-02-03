@@ -385,7 +385,7 @@ function AddOn_Chomp.EncodeQuotedPrintable(text, codecVersion)
 		if type(codecVersion) ~= "number" then
 			error("AddOn_Chomp.EncodeQuotedPrintable(): codecVersion: expected number or nil, got " .. type(codecVersion), 2)
 		elseif not CodecsByVersion[codecVersion] then
-			error("AddOn_Chomp.EncodeQuotedPrintable(): codecVersion: unsupported codec codecVersion " .. type(codecVersion), 2)
+			error("AddOn_Chomp.EncodeQuotedPrintable(): codecVersion: unsupported codec version " .. type(codecVersion), 2)
 		end
 	end
 
@@ -460,7 +460,7 @@ function AddOn_Chomp.DecodeQuotedPrintable(text, codecVersion)
 		if type(codecVersion) ~= "number" then
 			error("AddOn_Chomp.DecodeQuotedPrintable(): codecVersion: expected number or nil, got " .. type(codecVersion), 2)
 		elseif not CodecsByVersion[codecVersion] then
-			error("AddOn_Chomp.DecodeQuotedPrintable(): codecVersion: unsupported codec codecVersion " .. type(codecVersion), 2)
+			error("AddOn_Chomp.DecodeQuotedPrintable(): codecVersion: unsupported codec version " .. type(codecVersion), 2)
 		end
 	end
 
@@ -483,7 +483,7 @@ function AddOn_Chomp.SafeSubString(text, first, last, textLen, codecVersion)
 		if type(codecVersion) ~= "number" then
 			error("AddOn_Chomp.SafeSubstring(): codecVersion: expected number or nil, got " .. type(codecVersion), 2)
 		elseif not CodecsByVersion[codecVersion] then
-			error("AddOn_Chomp.SafeSubstring(): codecVersion: unsupported codec codecVersion " .. type(codecVersion), 2)
+			error("AddOn_Chomp.SafeSubstring(): codecVersion: unsupported codec version " .. type(codecVersion), 2)
 		end
 	end
 
