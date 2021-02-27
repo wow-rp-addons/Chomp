@@ -20,11 +20,77 @@ end
 
 local Internal = __chomp_internal
 
-local SAFE_BYTES = {
+-- Version 1, using "`" as the escape sequence character. Deprecated and will be removed eventually.
+local CodecV1 = {}
+
+CodecV1.DECODE_PATTERN = "`(%x%x)"
+CodecV1.ESCAPE_CHAR = "`"
+CodecV1.ESCAPE_BYTE = string.byte(CodecV1.ESCAPE_CHAR)
+CodecV1.SAFE_BYTES = {
 	[10] = true, -- newline
 	[92] = true, -- backslash
 	[96] = true, -- grave
 	[124] = true, -- pipe
+}
+
+function CodecV1.DecodeSafeByte(b)
+	local byteNum = tonumber(b, 16)
+	if CodecV1.SAFE_BYTES[byteNum] then
+		return string.char(byteNum)
+	else
+		return ("`%02X"):format(byteNum)
+	end
+end
+
+function CodecV1.EncodeCharToQuotedPrintable(c)
+	return ("`%02X"):format(c:byte())
+end
+
+function CodecV1.EncodeStringToQuotedPrintable(s)
+	return (s:gsub(".", CodecV1.EncodeCharToQuotedPrintable))
+end
+
+function CodecV1.EncodeTooManyContinuations(s1, s2)
+	return s1 .. (s2:gsub(".", CodecV1.EncodeCharToQuotedPrintable))
+end
+
+-- Version 2, using "~" as the escape sequence character.
+local CodecV2 = {}
+
+CodecV2.DECODE_PATTERN = "~(%x%x)"
+CodecV2.ESCAPE_CHAR = "~"
+CodecV2.ESCAPE_BYTE = string.byte(CodecV2.ESCAPE_CHAR)
+CodecV2.SAFE_BYTES = {
+	[10] = true, -- newline
+	[92] = true, -- backslash
+	[124] = true, -- pipe
+	[126] = true, -- tilde
+}
+
+function CodecV2.DecodeSafeByte(b)
+	local byteNum = tonumber(b, 16)
+	if CodecV2.SAFE_BYTES[byteNum] then
+		return string.char(byteNum)
+	else
+		return ("~%02X"):format(byteNum)
+	end
+end
+
+function CodecV2.EncodeCharToQuotedPrintable(c)
+	return ("~%02X"):format(c:byte())
+end
+
+function CodecV2.EncodeStringToQuotedPrintable(s)
+	return (s:gsub(".", CodecV2.EncodeCharToQuotedPrintable))
+end
+
+function CodecV2.EncodeTooManyContinuations(s1, s2)
+	return s1 .. (s2:gsub(".", CodecV2.EncodeCharToQuotedPrintable))
+end
+
+local CodecsByVersion = {
+	[1] = CodecV1,
+	[2] = CodecV2,
 }
 
 -- Realm part matching is greedy, as realm names will rarely have dashes, but
@@ -254,127 +320,125 @@ function AddOn_Chomp.CheckLoggedContents(text)
 	return true, nil
 end
 
-local function CharToQuotedPrintable(c)
-	return ("`%02X"):format(c:byte())
-end
+function Internal.EncodeQuotedPrintable(text, restrictBinary, codecVersion)
+	local codec = CodecsByVersion[codecVersion]
 
-local function StringToQuotedPrintable(s)
-	return (s:gsub(".", CharToQuotedPrintable))
-end
-
-local function TooManyContinuations(s1, s2)
-	return s1 .. (s2:gsub(".", CharToQuotedPrintable))
-end
-
-function Internal.EncodeQuotedPrintable(text, restrictBinary)
 	-- First, the quoted-printable escape character.
-	text = text:gsub("`", CharToQuotedPrintable)
+	text = text:gsub(codec.ESCAPE_CHAR, codec.EncodeCharToQuotedPrintable)
 
 	if not restrictBinary then
 		-- Just NUL, which never works normally.
-		text = text:gsub("%z", CharToQuotedPrintable)
+		text = text:gsub("%z", codec.EncodeCharToQuotedPrintable)
 
 		-- Bytes not used in UTF-8 ever.
-		text = text:gsub("[\192\193\245-\255]", CharToQuotedPrintable)
+		text = text:gsub("[\192\193\245-\255]", codec.EncodeCharToQuotedPrintable)
 
 		-- Multiple leading bytes.
 		text = text:gsub("[\194-\244]+[\194-\244]", function(s)
-			return (s:gsub(".", CharToQuotedPrintable, #s - 1))
+			return (s:gsub(".", codec.EncodeCharToQuotedPrintable, #s - 1))
 		end)
 
 		--- Unicode 11.0.0, Table 3-7 malformed UTF-8 byte sequences.
-		text = text:gsub("\224[\128-\159][\128-\191]", StringToQuotedPrintable)
-		text = text:gsub("\240[\128-\143][\128-\191][\128-\191]", StringToQuotedPrintable)
-		text = text:gsub("\244[\143-\191][\128-\191][\128-\191]", StringToQuotedPrintable)
+		text = text:gsub("\224[\128-\159][\128-\191]", codec.EncodeStringToQuotedPrintable)
+		text = text:gsub("\240[\128-\143][\128-\191][\128-\191]", codec.EncodeStringToQuotedPrintable)
+		text = text:gsub("\244[\143-\191][\128-\191][\128-\191]", codec.EncodeStringToQuotedPrintable)
 
 		-- UTF-16 reserved codepoints
-		text = text:gsub("\237\158[\154-\191]", StringToQuotedPrintable)
-		text = text:gsub("\237[\159-\191][\128-\191]", StringToQuotedPrintable)
+		text = text:gsub("\237\158[\154-\191]", codec.EncodeStringToQuotedPrintable)
+		text = text:gsub("\237[\159-\191][\128-\191]", codec.EncodeStringToQuotedPrintable)
 
 		-- Unicode invalid codepoints
-		text = text:gsub("\239\191[\190\191]", StringToQuotedPrintable)
+		text = text:gsub("\239\191[\190\191]", codec.EncodeStringToQuotedPrintable)
 
 		-- 2-4-byte leading bytes without enough continuation bytes.
-		text = text:gsub("[\194-\244]%f[^\128-\191\194-\244]", CharToQuotedPrintable)
+		text = text:gsub("[\194-\244]%f[^\128-\191\194-\244]", codec.EncodeCharToQuotedPrintable)
 		-- 3-4-byte leading bytes without enough continuation bytes.
-		text = text:gsub("[\224-\244][\128-\191]%f[^\128-\191]", StringToQuotedPrintable)
+		text = text:gsub("[\224-\244][\128-\191]%f[^\128-\191]", codec.EncodeStringToQuotedPrintable)
 		-- 4-byte leading bytes without enough continuation bytes.
-		text = text:gsub("[\240-\244][\128-\191][\128-\191]%f[^\128-\191]", StringToQuotedPrintable)
+		text = text:gsub("[\240-\244][\128-\191][\128-\191]%f[^\128-\191]", codec.EncodeStringToQuotedPrintable)
 
 		-- Continuation bytes without leading bytes.
-		text = text:gsub("%f[\128-\191\194-\244][\128-\191]+", StringToQuotedPrintable)
+		text = text:gsub("%f[\128-\191\194-\244][\128-\191]+", codec.EncodeStringToQuotedPrintable)
 
 		-- 2-byte character with too many continuation bytes
-		text = text:gsub("([\194-\223][\128-\191])([\128-\191]+)", TooManyContinuations)
+		text = text:gsub("([\194-\223][\128-\191])([\128-\191]+)", codec.EncodeTooManyContinuations)
 		-- 3-byte character with too many continuation bytes
-		text = text:gsub("([\224-\239][\128-\191][\128-\191])([\128-\191]+)", TooManyContinuations)
+		text = text:gsub("([\224-\239][\128-\191][\128-\191])([\128-\191]+)", codec.EncodeTooManyContinuations)
 		-- 4-byte character with too many continuation bytes
-		text = text:gsub("([\240-\244][\128-\191][\128-\191][\128-\191])([\128-\191]+)", TooManyContinuations)
+		text = text:gsub("([\240-\244][\128-\191][\128-\191][\128-\191])([\128-\191]+)", codec.EncodeTooManyContinuations)
 	else
 		-- Binary-restricted messages don't permit UI escape sequences.
-		text = text:gsub("|", CharToQuotedPrintable)
+		text = text:gsub("|", codec.EncodeCharToQuotedPrintable)
 		-- They're also picky about backslashes -- ex. \\n (literal \n) fails.
-		text = text:gsub("\\", CharToQuotedPrintable)
+		text = text:gsub("\\", codec.EncodeCharToQuotedPrintable)
 		-- Newlines are truly necessary but not permitted.
-		text = text:gsub("\010", CharToQuotedPrintable)
+		text = text:gsub("\010", codec.EncodeCharToQuotedPrintable)
 	end
 
 	return text
 end
 
-function AddOn_Chomp.EncodeQuotedPrintable(text)
+function AddOn_Chomp.EncodeQuotedPrintable(text, codecVersion)
 	if type(text) ~= "string" then
 		error("AddOn_Chomp.EncodeQuotedPrintable(): text: expected string, got " .. type(text), 2)
+	elseif codecVersion ~= nil then
+		if type(codecVersion) ~= "number" then
+			error("AddOn_Chomp.EncodeQuotedPrintable(): codecVersion: expected number or nil, got " .. type(codecVersion), 2)
+		elseif not CodecsByVersion[codecVersion] then
+			error("AddOn_Chomp.EncodeQuotedPrintable(): codecVersion: unsupported codec version " .. type(codecVersion), 2)
+		end
 	end
 
+	local codec = CodecsByVersion[codecVersion or 1]
+
 	-- First, the quoted-printable escape character.
-	text = text:gsub("`", CharToQuotedPrintable)
+	text = text:gsub(codec.ESCAPE_CHAR, codec.EncodeCharToQuotedPrintable)
 
 	-- Logged messages don't permit UI escape sequences.
-	text = text:gsub("|", CharToQuotedPrintable)
+	text = text:gsub("|", codec.EncodeCharToQuotedPrintable)
 	-- They're also picky about backslashes -- ex. \\n (literal \n) fails.
-	text = text:gsub("\\", CharToQuotedPrintable)
+	text = text:gsub("\\", codec.EncodeCharToQuotedPrintable)
 	-- Some characters are considered abusive-by-default by Blizzard.
-	text = text:gsub("\229\141[\141\144]", StringToQuotedPrintable)
+	text = text:gsub("\229\141[\141\144]", codec.EncodeStringToQuotedPrintable)
 	-- ASCII control characters. \009 and \127 are allowed for some reason.
-	text = text:gsub("[%z\001-\008\010-\031]", CharToQuotedPrintable)
+	text = text:gsub("[%z\001-\008\010-\031]", codec.EncodeCharToQuotedPrintable)
 
 	-- Bytes not used in UTF-8 ever.
-	text = text:gsub("[\192\193\245-\255]", CharToQuotedPrintable)
+	text = text:gsub("[\192\193\245-\255]", codec.EncodeCharToQuotedPrintable)
 
 	-- Multiple leading bytes.
 	text = text:gsub("[\194-\244]+[\194-\244]", function(s)
-		return (s:gsub(".", CharToQuotedPrintable, #s - 1))
+		return (s:gsub(".", codec.EncodeCharToQuotedPrintable, #s - 1))
 	end)
 
 	--- Unicode 11.0.0, Table 3-7 malformed UTF-8 byte sequences.
-	text = text:gsub("\224[\128-\159][\128-\191]", StringToQuotedPrintable)
-	text = text:gsub("\240[\128-\143][\128-\191][\128-\191]", StringToQuotedPrintable)
-	text = text:gsub("\244[\143-\191][\128-\191][\128-\191]", StringToQuotedPrintable)
+	text = text:gsub("\224[\128-\159][\128-\191]", codec.EncodeStringToQuotedPrintable)
+	text = text:gsub("\240[\128-\143][\128-\191][\128-\191]", codec.EncodeStringToQuotedPrintable)
+	text = text:gsub("\244[\143-\191][\128-\191][\128-\191]", codec.EncodeStringToQuotedPrintable)
 
 	-- UTF-16 reserved codepoints
-	text = text:gsub("\237\158[\154-\191]", StringToQuotedPrintable)
-	text = text:gsub("\237[\159-\191][\128-\191]", StringToQuotedPrintable)
+	text = text:gsub("\237\158[\154-\191]", codec.EncodeStringToQuotedPrintable)
+	text = text:gsub("\237[\159-\191][\128-\191]", codec.EncodeStringToQuotedPrintable)
 
 	-- Unicode invalid codepoints
-	text = text:gsub("\239\191[\190\191]", StringToQuotedPrintable)
+	text = text:gsub("\239\191[\190\191]", codec.EncodeStringToQuotedPrintable)
 
 	-- 2-4-byte leading bytes without enough continuation bytes.
-	text = text:gsub("[\194-\244]%f[^\128-\191\194-\244]", CharToQuotedPrintable)
+	text = text:gsub("[\194-\244]%f[^\128-\191\194-\244]", codec.EncodeCharToQuotedPrintable)
 	-- 3-4-byte leading bytes without enough continuation bytes.
-	text = text:gsub("[\224-\244][\128-\191]%f[^\128-\191]", StringToQuotedPrintable)
+	text = text:gsub("[\224-\244][\128-\191]%f[^\128-\191]", codec.EncodeStringToQuotedPrintable)
 	-- 4-byte leading bytes without enough continuation bytes.
-	text = text:gsub("[\240-\244][\128-\191][\128-\191]%f[^\128-\191]", StringToQuotedPrintable)
+	text = text:gsub("[\240-\244][\128-\191][\128-\191]%f[^\128-\191]", codec.EncodeStringToQuotedPrintable)
 
 	-- Continuation bytes without leading bytes.
-	text = text:gsub("%f[\128-\191\194-\244][\128-\191]+", StringToQuotedPrintable)
+	text = text:gsub("%f[\128-\191\194-\244][\128-\191]+", codec.EncodeStringToQuotedPrintable)
 
 	-- 2-byte character with too many continuation bytes
-	text = text:gsub("([\194-\223][\128-\191])([\128-\191]+)", TooManyContinuations)
+	text = text:gsub("([\194-\223][\128-\191])([\128-\191]+)", codec.EncodeTooManyContinuations)
 	-- 3-byte character with too many continuation bytes
-	text = text:gsub("([\224-\239][\128-\191][\128-\191])([\128-\191]+)", TooManyContinuations)
+	text = text:gsub("([\224-\239][\128-\191][\128-\191])([\128-\191]+)", codec.EncodeTooManyContinuations)
 	-- 4-byte character with too many continuation bytes
-	text = text:gsub("([\240-\244][\128-\191][\128-\191][\128-\191])([\128-\191]+)", TooManyContinuations)
+	text = text:gsub("([\240-\244][\128-\191][\128-\191][\128-\191])([\128-\191]+)", codec.EncodeTooManyContinuations)
 
 	return text
 end
@@ -383,29 +447,30 @@ local function DecodeAnyByte(b)
 	return string.char(tonumber(b, 16))
 end
 
-local function DecodeSafeByte(b)
-	local byteNum = tonumber(b, 16)
-	if SAFE_BYTES[byteNum] then
-		return string.char(byteNum)
-	else
-		return ("`%02X"):format(byteNum)
-	end
-end
-
-function Internal.DecodeQuotedPrintable(text, restrictBinary)
-	local decodedText = text:gsub("`(%x%x)", not restrictBinary and DecodeAnyByte or DecodeSafeByte)
+function Internal.DecodeQuotedPrintable(text, restrictBinary, codecVersion)
+	local codec = CodecsByVersion[codecVersion]
+	local decodedText = text:gsub(codec.DECODE_PATTERN, not restrictBinary and DecodeAnyByte or codec.DecodeSafeByte)
 	return decodedText
 end
 
-function AddOn_Chomp.DecodeQuotedPrintable(text)
+function AddOn_Chomp.DecodeQuotedPrintable(text, codecVersion)
 	if type(text) ~= "string" then
 		error("AddOn_Chomp.DecodeQuotedPrintable(): text: expected string, got " .. type(text), 2)
+	elseif codecVersion ~= nil then
+		if type(codecVersion) ~= "number" then
+			error("AddOn_Chomp.DecodeQuotedPrintable(): codecVersion: expected number or nil, got " .. type(codecVersion), 2)
+		elseif not CodecsByVersion[codecVersion] then
+			error("AddOn_Chomp.DecodeQuotedPrintable(): codecVersion: unsupported codec version " .. type(codecVersion), 2)
+		end
 	end
-	local decodedText = text:gsub("`(%x%x)", DecodeAnyByte)
+
+	local codec = CodecsByVersion[codecVersion or 1]
+
+	local decodedText = text:gsub(codec.DECODE_PATTERN, DecodeAnyByte)
 	return decodedText
 end
 
-function AddOn_Chomp.SafeSubString(text, first, last, textLen)
+function AddOn_Chomp.SafeSubString(text, first, last, textLen, codecVersion)
 	if type(text) ~= "string" then
 		error("AddOn_Chomp.SafeSubString(): text: expected string, got " .. type(text), 2)
 	elseif type(first) ~= "number" then
@@ -414,7 +479,16 @@ function AddOn_Chomp.SafeSubString(text, first, last, textLen)
 		error("AddOn_Chomp.SafeSubString(): last: expected number, got " .. type(last), 2)
 	elseif textLen and type(textLen) ~= "number" then
 		error("AddOn_Chomp.SafeSubString(): textLen: expected number or nil, got " .. type(textLen), 2)
+	elseif codecVersion ~= nil then
+		if type(codecVersion) ~= "number" then
+			error("AddOn_Chomp.SafeSubstring(): codecVersion: expected number or nil, got " .. type(codecVersion), 2)
+		elseif not CodecsByVersion[codecVersion] then
+			error("AddOn_Chomp.SafeSubstring(): codecVersion: unsupported codec version " .. type(codecVersion), 2)
+		end
 	end
+
+	local codec = CodecsByVersion[codecVersion or 1]
+
 	local offset = 0
 	if not textLen then
 		textLen = #text
@@ -424,10 +498,9 @@ function AddOn_Chomp.SafeSubString(text, first, last, textLen)
 	end
 	if textLen > last then
 		local b3, b2, b1 = text:byte(last - 2, last)
-		-- 96 is numeric code for "`"
-		if b1 == 96 or (b1 >= 194 and b1 <= 244) then
+		if b1 == codec.ESCAPE_BYTE or (b1 >= 194 and b1 <= 244) then
 			offset = 1
-		elseif b2 == 96 or (b2 >= 224 and b2 <= 244) then
+		elseif b2 == codec.ESCAPE_BYTE or (b2 >= 224 and b2 <= 244) then
 			offset = 2
 		elseif b3 >= 240 and b3 <= 244 then
 			offset = 3
