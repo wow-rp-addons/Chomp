@@ -29,6 +29,13 @@ stds.wow = {
 			},
 		},
 
+		C_ReportSystem = {
+			fields = {
+				"CanReportPlayer",
+				"OpenReportPlayerDialog",
+			},
+		},
+
 		C_Timer = {
 			fields = {
 				"After",
