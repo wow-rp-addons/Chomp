@@ -90,6 +90,8 @@ stds.wow = {
 		"UnitName",
 		"UnitRealmRelationship",
 		"UNKNOWNOBJECT",
+		"WOW_PROJECT_ID",
+		"WOW_PROJECT_RETAIL",
 	},
 }
 

@@ -40,6 +40,8 @@ local Internal = __chomp_internal
 
 -- Safe instantaneous burst bytes and safe susatined bytes per second.
 -- Lower rates on non-Retail clients due to aggressive throttling.
+local BURST, BPS
+
 if WOW_PROJECT_ID == WOW_PROJECT_RETAIL then
 	BURST, BPS = 8192, 2048
 else
