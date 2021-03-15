@@ -39,7 +39,15 @@ local Internal = __chomp_internal
 ]]
 
 -- Safe instantaneous burst bytes and safe susatined bytes per second.
-local BURST, BPS = 8192, 2048
+-- Lower rates on non-Retail clients due to aggressive throttling.
+local BURST, BPS
+
+if WOW_PROJECT_ID == WOW_PROJECT_RETAIL then
+	BURST, BPS = 8192, 2048
+else
+	BURST, BPS = 4000, 800
+end
+
 -- These values were safe on 8.0 beta, but are unsafe on 7.3 live. Normally I'd
 -- love to automatically use them if 8.0 is live, but it's not 100% clear if
 -- this is a 8.0 thing or a test realm thing.
