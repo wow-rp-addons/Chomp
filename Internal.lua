@@ -532,6 +532,10 @@ local function EnumerateFriendGameAccounts()
 	return NextGameAccount
 end
 
+local function NormalizeRealmName(realmName)
+	return string.gsub(realmName, "[%s*%-*]", "")
+end
+
 local function CanExchangeWithGameAccount(account)
 	if not account.isOnline then
 		return false  -- Friend isn't even online.
@@ -539,12 +543,14 @@ local function CanExchangeWithGameAccount(account)
 		return false  -- Friend isn't playing WoW. Imagine.
 	end
 
-	local realmName     = account.realmName and string.gsub(account.realmName, "[%s*%-*]", "") or nil
 	local characterName = account.characterName
+	local realmName     = account.realmName and NormalizeRealmName(account.realmName) or nil
 	local factionName   = account.factionName
 
-	if not realmName or not characterName or characterName == "" or characterName == UNKNOWNOBJECT then
-		return false  -- Can't address the character on this account.
+	if not characterName or characterName == "" or characterName == UNKNOWNOBJECT then
+		return nil    -- Character name is invalid.
+	elseif not realmName or realmName == "" then
+		return nil    -- Realm name is invalid.
 	elseif Internal.SameRealm[realmName] and factionName == UnitFactionGroup("player") then
 		return false  -- This character is on the same faction and realm.
 	else
