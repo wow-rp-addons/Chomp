@@ -5,7 +5,6 @@
 	<Include file="Public.lua"/>
 	<Include file="StringManip.lua"/>
 	<Include file="CTLCompat.lua"/>
-	<Include file="APIDocumentation.lua"/>
 
 	<Script>
 		if __chomp_internal and __chomp_internal.LOADING then

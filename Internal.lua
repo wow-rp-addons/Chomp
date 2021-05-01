@@ -603,15 +603,6 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 			end
 			self.OutgoingQueue = nil
 		end
-		if self.ChompAPI then
-			if IsAddOnLoaded("Blizzard_APIDocumentation") then
-				APIDocumentation:AddDocumentationTable(self.ChompAPI)
-			else
-				self:RegisterEvent("ADDON_LOADED")
-			end
-		end
-	elseif event == "ADDON_LOADED" and ... == "Blizzard_APIDocumentation" then
-		APIDocumentation:AddDocumentationTable(self.ChompAPI)
 	elseif event == "PLAYER_LEAVING_WORLD" then
 		self.unloadTime = GetTime()
 	elseif event == "PLAYER_ENTERING_WORLD" and self.unloadTime then
