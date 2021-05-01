@@ -3,7 +3,7 @@
 ## Interface-Classic: 11307
 ## Title: Chomp Message Library
 ## Author: Justin Snelgrove
-## Version: 17
+## Version: @project-version@
 ## Notes: Battle.net and in-game messaging library with smart addon whispers.
 ## X-Category: Library
 ## X-License: ISC
