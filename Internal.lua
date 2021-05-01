@@ -548,9 +548,9 @@ local function CanExchangeWithGameAccount(account)
 	local factionName   = account.factionName
 
 	if not characterName or characterName == "" or characterName == UNKNOWNOBJECT then
-		return nil    -- Character name is invalid.
+		return false  -- Character name is invalid.
 	elseif not realmName or realmName == "" then
-		return nil    -- Realm name is invalid.
+		return false  -- Realm name is invalid.
 	elseif Internal.SameRealm[realmName] and factionName == UnitFactionGroup("player") then
 		return false  -- This character is on the same faction and realm.
 	else
