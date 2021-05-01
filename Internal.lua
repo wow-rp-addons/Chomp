@@ -533,7 +533,7 @@ local function EnumerateFriendGameAccounts()
 end
 
 local function NormalizeRealmName(realmName)
-	return string.gsub(realmName, "[%s*%-*]", "")
+	return (string.gsub(realmName, "[%s-]", ""))
 end
 
 local function CanExchangeWithGameAccount(account)
