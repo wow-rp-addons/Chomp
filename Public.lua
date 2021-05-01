@@ -411,27 +411,6 @@ function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, prefixSettings)
 	end
 end
 
-local function BNGetIDGameAccount(name)
-	if not BNFeaturesEnabledAndConnected() then
-		return nil
-	end
-	name = AddOn_Chomp.NameMergedRealm(name)
-	for i = 1, BNGetNumFriends() do
-		for j = 1, Internal:GetBNFriendNumGameAccounts(i) do
-			local account = Internal:GetBNFriendGameAccountInfo(i, j)
-			if account.isOnline and account.clientProgram == BNET_CLIENT_WOW then
-				local realm = account.realmName and (account.realmName:gsub("%s*%-*", "")) or nil
-				if realm
-					and (not Internal.SameRealm[realm] or account.factionName ~= UnitFactionGroup("player"))
-					and AddOn_Chomp.InsensitiveStringEquals(name, AddOn_Chomp.NameMergedRealm(account.characterName, realm)) then
-					return account.gameAccountID
-				end
-			end
-		end
-	end
-	return nil
-end
-
 local nextSessionID = math.random(0, 4095)
 local function SplitAndSend(sendFunc, maxSize, bitField, prefix, text, ...)
 	local textLen = #text
@@ -541,9 +520,9 @@ function AddOn_Chomp.SmartAddonMessage(prefix, data, kind, target, messageOption
 	local queue = ("%s%s%s"):format(prefix, kind, tostring(target) or "")
 
 	if kind == "WHISPER" then
-		-- BNGetIDGameAccount() only returns an ID for crossfaction and
+		-- GetBattleNetAccountID() only returns an ID for crossfaction and
 		-- crossrealm targets.
-		local bnetIDGameAccount = BNGetIDGameAccount(target)
+		local bnetIDGameAccount = Internal:GetBattleNetAccountID(target)
 		if bnetIDGameAccount then
 			ToBattleNet(bitField, prefix, Internal.EncodeQuotedPrintable(data, false, codecVersion), kind, bnetIDGameAccount, messageOptions.priority, messageOptions.queue or queue)
 			return "BATTLENET"
@@ -586,7 +565,7 @@ function AddOn_Chomp.CheckReportGUID(prefix, guid)
 		return false, "UNKNOWN"
 	end
 	local target = AddOn_Chomp.NameMergedRealm(name, realm)
-	if BNGetIDGameAccount(target) then
+	if Internal:GetBattleNetAccountID(target) then
 		return false, "BATTLENET"
 	end
 	ReportLocation:SetGUID(guid)

@@ -518,16 +518,5 @@ function AddOn_Chomp.InsensitiveStringEquals(a, b)
 		return false
 	end
 
-	-- If the UTF8 library has been loaded (which globally mutates the
-	-- string table - actually helpful here!) we'll prefer that for any case
-	-- insensitive comparisons, since string.lower will use the process
-	-- locale which is likely C, so ASCII only.
-	--
-	-- The UTF8 library is left optional as it's quite large. You can pull it
-	-- in if you want better behaviour in non-English locales.
-	--
-	-- See: <https://www.curseforge.com/wow/addons/utf8>
-
-	local lower = string.utf8lower or string.lower
-	return lower(a) == lower(b)
+	return strcmputf8i(a, b) == 0
 end
