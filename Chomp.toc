@@ -1,7 +1,6 @@
-## Interface: 90005
-## X-Interface: 90005
-## X-Interface-Required: 90005
-## X-WoW-Version: 9.0.5
+## Interface: 90100
+## Interface-BC: 20501
+## Interface-Classic: 11307
 ## Title: Chomp Message Library
 ## Author: Justin Snelgrove
 ## Version: 17

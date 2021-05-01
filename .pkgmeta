@@ -1,0 +1,16 @@
+---
+package-as: Chomp
+enable-nolib-creation: no
+
+externals:
+  Libs/ChatThrottleLib: https://repos.curseforge.com/wow/chatthrottlelib/trunk
+
+ignore:
+  - Libs/*/*.rockspec
+  - Libs/*/*.toc
+  - Libs/*/changelog.*
+  - Libs/*/CHANGELOG.*
+  - Libs/*/docs
+  - Libs/*/examples
+  - Libs/*/README.*
+  - Libs/*/tests
