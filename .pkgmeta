@@ -3,7 +3,9 @@ package-as: Chomp
 enable-nolib-creation: no
 
 externals:
+  Libs/CallbackHandler-1.0: https://repos.curseforge.com/wow/callbackhandler/trunk/CallbackHandler-1.0
   Libs/ChatThrottleLib: https://repos.curseforge.com/wow/chatthrottlelib/trunk
+  Libs/LibStub: https://repos.curseforge.com/wow/libstub/trunk
 
 ignore:
   - Libs/*/*.rockspec
