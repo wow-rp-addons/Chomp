@@ -14,7 +14,7 @@
 	CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ]]
 
-local VERSION = 17
+local VERSION = 18
 
 if IsLoggedIn() then
 	error(("Chomp Message Library (embedded: %s) cannot be loaded after login."):format((...)))
@@ -33,6 +33,8 @@ end
 __chomp_internal.LOADING = true
 
 local Internal = __chomp_internal
+
+Internal.callbacks = LibStub:GetLibrary("CallbackHandler-1.0"):New(Internal)
 
 --[[
 	CONSTANTS
@@ -70,8 +72,19 @@ if not Internal.Prefixes then
 	Internal.Prefixes = {}
 end
 
-if not Internal.ErrorCallbacks then
-	Internal.ErrorCallbacks = {}
+if Internal.ErrorCallbacks then
+	-- v18+: Use CallbackHandler internally; relocate any registered error
+	--       callbacks to the registry.
+
+	for _, callback in ipairs(Internal.ErrorCallbacks) do
+		local event = "OnError"
+		local func  = function(_, ...) return callback(...) end
+		local owner = tostring(callback)
+
+		Internal.RegisterCallback(owner, event, func)
+	end
+
+	Internal.ErrorCallbacks = nil
 end
 
 Internal.BITS = {
@@ -223,6 +236,7 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 			end
 			if prefixData.validTypes[type(handlerData)] then
 				xpcall(prefixData.callback, CallErrorHandler, prefix, handlerData, channel, sender, target, zoneChannelID, localID, name, instanceID, nil, nil, nil, sessionID, msgID, msgTotal, bitField)
+				Internal:TriggerEvent("OnMessageReceived", prefix, handlerData, channel, sender, target, zoneChannelID, localID, name, instanceID, nil, nil, nil, sessionID, msgID, msgTotal, bitField)
 			end
 			buffer[i] = false
 			if i == msgTotal then
@@ -270,7 +284,7 @@ function Internal:TargetSupportsCodecV2(prefix, target)
 end
 
 function Internal:GetCodecVersionFromBitfield(bitField)
-	return (bit.band(bitField, Internal.BITS.CODECV2) ~= 0) and 2 or 1;
+	return (bit.band(bitField, Internal.BITS.CODECV2) ~= 0) and 2 or 1
 end
 
 --[[
@@ -381,6 +395,10 @@ function Internal.OnTick()
 	end
 end
 
+function Internal:TriggerEvent(event, ...)
+	return self.callbacks:Fire(event, ...)
+end
+
 --[[
 	FUNCTION HOOKS
 ]]
@@ -396,9 +414,7 @@ local function MessageEventFilter_SYSTEM (self, event, text)
 		Internal.Filter[name] = nil
 		return false
 	end
-	for i, func in ipairs(Internal.ErrorCallbacks) do
-		xpcall(func, CallErrorHandler, name)
-	end
+	Internal:TriggerEvent("OnError", name)
 	return true
 end
 

@@ -611,7 +611,7 @@ function AddOn_Chomp.ReportGUID(prefix, guid, customMessage)
 	local canReport, reason = AddOn_Chomp.CheckReportGUID(prefix, guid)
 	if canReport then
 		if C_ReportSystem then
-			local _, _, _, _, _, name, realm = GetPlayerInfoByGUID(guid);
+			local _, _, _, _, _, name, realm = GetPlayerInfoByGUID(guid)
 			if name and realm then
 				C_ReportSystem.OpenReportPlayerDialog(PLAYER_REPORT_TYPE_LANGUAGE, name .. "-" .. realm, ReportLocation)
 			end
@@ -623,31 +623,85 @@ function AddOn_Chomp.ReportGUID(prefix, guid, customMessage)
 	return false, reason
 end
 
+-- TODO: Can remove this once Classic, BC, and Retail are all updated.
+local function CopyValuesAsKeys(tbl)
+	local output = {}
+
+	for k, v in ipairs(tbl) do
+		output[v] = v
+	end
+
+	return output
+end
+
+AddOn_Chomp.Event = CopyValuesAsKeys(
+	{
+		"OnMessageReceived",
+		"OnError",
+	}
+)
+
+function AddOn_Chomp.RegisterCallback(event, func, owner)
+	if type(event) ~= "string" then
+		error("AddOn_Chomp.RegisterCallback: 'event' must be a string")
+	elseif not AddOn_Chomp.Event[event] then
+		error(string.format("AddOn_Chomp.RegisterCallback: event %q does not exist", event))
+	elseif type(func) ~= "function" and type(func) ~= "table" then
+		error("AddOn_Chomp.RegisterCallback: 'func' must be callable")
+	elseif type(owner) ~= "string" and type(owner) ~= "table" and type(owner) ~= "thread" then
+		error("AddOn_Chomp.RegisterCallback: 'owner' must be string, table, or coroutine")
+	end
+
+	Internal.RegisterCallback(owner, event, function(_, ...) return func(owner, ...) end)
+end
+
+function AddOn_Chomp.UnregisterCallback(event, owner)
+	if type(event) ~= "string" then
+		error("AddOn_Chomp.UnregisterCallback: 'event' must be a string")
+	elseif not AddOn_Chomp.Event[event] then
+		error(string.format("AddOn_Chomp.UnregisterCallback: event %q does not exist", event))
+	elseif type(owner) ~= "string" and type(owner) ~= "table" and type(owner) ~= "thread" then
+		error("AddOn_Chomp.UnregisterCallback: 'owner' must be string, table, or coroutine")
+	end
+
+	Internal.UnregisterCallback(owner, event)
+end
+
+function AddOn_Chomp.UnregisterAllCallbacks(owner)
+	if type(owner) ~= "string" and type(owner) ~= "table" and type(owner) ~= "thread" then
+		error("AddOn_Chomp.UnregisterAllCallbacks: 'owner' must be string, table, or coroutine")
+	end
+
+	Internal.UnregisterAllCallbacks(owner)
+end
+
 function AddOn_Chomp.RegisterErrorCallback(callback)
-	if type(callback) ~= "function" then
-		error("AddOn_Chomp.RegisterErrorCallback(): callback: expected function, got " .. type(callback), 2)
-	end
-	for i, checkCallback in ipairs(Internal.ErrorCallbacks) do
-		if callback == checkCallback then
-			return false
-		end
-	end
-	Internal.ErrorCallbacks[#Internal.ErrorCallbacks + 1] = callback
+	-- v18+: RegisterErrorCallback is deprecated in favor of the generic
+	--       RegisterCallback system.
+
+	local event = "OnError"
+	local func  = function(_, ...) return callback(...) end
+	local owner = tostring(callback)
+
+	AddOn_Chomp.RegisterCallback(event, func, owner)
+
 	return true
 end
 
-function AddOn_Chomp.UnegisterErrorCallback(callback)
-	if type(callback) ~= "function" then
-		error("AddOn_Chomp.UnegisterErrorCallback(): callback: expected function, got " .. type(callback), 2)
-	end
-	for i, checkCallback in ipairs(Internal.ErrorCallbacks) do
-		if callback == checkCallback then
-			table.remove(i)
-			return true
-		end
-	end
-	return false
+function AddOn_Chomp.UnregisterErrorCallback(callback)
+	-- v18+: UnregisterErrorCallback is deprecated in favor of the generic
+	--       UnregisterCallback system.
+
+	local event = "OnError"
+	local owner = tostring(callback)
+
+	AddOn_Chomp.UnregisterCallback(event, owner)
+
+	return true
 end
+
+-- v18+: Deprecated alias for the old typo'd function name.
+AddOn_Chomp.UnegisterErrorCallback = AddOn_Chomp.UnregisterErrorCallback
 
 function AddOn_Chomp.GetBPS()
 	return Internal.BPS, Internal.BURST
