@@ -1,9 +1,12 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
-	<Script file="Internal.lua"/>
-	<Script file="Public.lua"/>
-	<Script file="StringManip.lua"/>
-	<Script file="CTLCompat.lua"/>
-	<Script file="APIDocumentation.lua"/>
+	<Include file="Libs\ChatThrottleLib\ChatThrottleLib.xml"/>
+
+	<Include file="Internal.lua"/>
+	<Include file="Public.lua"/>
+	<Include file="StringManip.lua"/>
+	<Include file="CTLCompat.lua"/>
+	<Include file="APIDocumentation.lua"/>
+
 	<Script>
 		if __chomp_internal and __chomp_internal.LOADING then
 			__chomp_internal.LOADING = nil

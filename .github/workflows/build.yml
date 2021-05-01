@@ -1,13 +1,19 @@
 ---
-name: Pull Request
-on: pull_request
+name: Package Release
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "*"
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v1
+        with:
+          fetch-depth: 100
 
       - name: Run Luacheck
         uses: nebularg/actions-luacheck@v1
@@ -17,13 +23,8 @@ jobs:
 
       - name: Create Package
         uses: BigWigsMods/packager@master
-        with:
-          args: -d -z
-
-      - uses: actions/upload-artifact@v2
-        with:
-          name: Chomp-PR-${{ github.event.number }}
-          path: .release/
+        env:
+          GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Send Webhook Notification
         if: failure()
