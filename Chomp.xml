@@ -9,8 +9,11 @@
 	<Include file="CTLCompat.lua"/>
 
 	<Script>
-		if __chomp_internal and __chomp_internal.LOADING then
-			__chomp_internal.LOADING = nil
+		local Chomp = LibStub:GetLibrary("Chomp", true)
+		local Internal = Chomp and Chomp.Internal or nil
+
+		if Chomp and Internal then
+			Internal.LOADING = nil
 		end
 	</Script>
 </Ui>

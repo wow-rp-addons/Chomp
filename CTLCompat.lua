@@ -19,11 +19,12 @@
 	mikk, which was released into the public domain.
 ]]
 
-if not __chomp_internal or not __chomp_internal.LOADING then
+local Chomp = LibStub:GetLibrary("Chomp", true)
+local Internal = Chomp and Chomp.Internal or nil
+
+if not Chomp or not Internal or not Internal.LOADING then
 	return
 end
-
-local Internal = __chomp_internal
 
 -- The following code provides a compatibility layer for addons using
 -- ChatThrottleLib. It won't load (and Chomp will feed messages into CTL) if

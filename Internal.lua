@@ -14,25 +14,23 @@
 	CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ]]
 
-local VERSION = 18
+local VERSION = 19
 
 if IsLoggedIn() then
 	error(("Chomp Message Library (embedded: %s) cannot be loaded after login."):format((...)))
-elseif __chomp_internal and (__chomp_internal.VERSION or 0) >= VERSION then
 	return
 end
 
-if not __chomp_internal then
-	__chomp_internal = CreateFrame("Frame")
+local Chomp = LibStub:NewLibrary("Chomp", VERSION)
+
+if not Chomp then
+	return
 end
 
-if not AddOn_Chomp then
-	AddOn_Chomp = {}
-end
+Chomp.Internal = Chomp.Internal or __chomp_internal or CreateFrame("Frame")
+Chomp.Internal.LOADING = true
 
-__chomp_internal.LOADING = true
-
-local Internal = __chomp_internal
+local Internal = Chomp.Internal
 
 Internal.callbacks = LibStub:GetLibrary("CallbackHandler-1.0"):New(Internal)
 
@@ -687,3 +685,14 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 end)
 
 Internal.VERSION = VERSION
+
+-- v19+: The future is now old man. These need to exist for compatibility, and
+--       to prevent issues where pre-v19 versions would replace newer ones if
+--       __chomp_internal were to just disappear.
+--
+--       Note that we still clear __chomp_internal once PLAYER_LOGIN has
+--       fired, but we don't remove  access to it from the library table
+--       because being able to inspect it at runtime is nice.
+
+_G.__chomp_internal = Internal
+_G.AddOn_Chomp = Chomp

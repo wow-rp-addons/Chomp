@@ -15,11 +15,12 @@
 	CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ]]
 
-if not __chomp_internal or not __chomp_internal.LOADING then
+local Chomp = LibStub:GetLibrary("Chomp", true)
+local Internal = Chomp and Chomp.Internal or nil
+
+if not Chomp or not Internal or not Internal.LOADING then
 	return
 end
-
-local Internal = __chomp_internal
 
 local DEFAULT_PRIORITY = "MEDIUM"
 local PRIORITIES_HASH = { HIGH = true, MEDIUM = true, LOW = true }

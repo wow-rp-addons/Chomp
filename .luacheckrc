@@ -24,6 +24,7 @@ read_globals = {
 
 	-- LibStub
 	"LibStub.GetLibrary",
+	"LibStub.NewLibrary",
 
 	-- Global APIs
 	"Ambiguate",
