@@ -61,7 +61,7 @@ function ChatThrottleLib:SendAddonMessage(priorityName, prefix, text, kind, targ
 	if kind == "CHANNEL" then
 		target = tonumber(target)
 	end
-	AddOn_Chomp.SendAddonMessage(prefix, text, kind, target, PRIORITY_FROM_CTL[priorityName], queueName or ("%s%s%s"):format(prefix, kind, (tostring(target) or "")), callback, callbackArg)
+	Chomp.SendAddonMessage(prefix, text, kind, target, PRIORITY_FROM_CTL[priorityName], queueName or ("%s%s%s"):format(prefix, kind, (tostring(target) or "")), callback, callbackArg)
 end
 
 function ChatThrottleLib:SendChatMessage(priorityName, prefix, text, kind, language, target, queueName, callback, callbackArg)
@@ -75,7 +75,7 @@ function ChatThrottleLib:SendChatMessage(priorityName, prefix, text, kind, langu
 	if kind == "CHANNEL" then
 		target = tonumber(target)
 	end
-	AddOn_Chomp.SendChatMessage(text, kind, language, target, PRIORITY_FROM_CTL[priorityName], queueName or ("%s%s%s"):format(prefix, (kind or "SAY"), (tostring(target) or "")), callback, callbackArg)
+	Chomp.SendChatMessage(text, kind, language, target, PRIORITY_FROM_CTL[priorityName], queueName or ("%s%s%s"):format(prefix, (kind or "SAY"), (tostring(target) or "")), callback, callbackArg)
 end
 
 function ChatThrottleLib.Hook_SendAddonMessage()

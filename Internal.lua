@@ -148,7 +148,7 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 		-- Uh, found an unknown bit, or a bit we're explicitly not to parse.
 		if not oneTimeError then
 			oneTimeError = true
-			error("AddOn_Chomp: Received an addon message that cannot be parsed, check your addons for updates. (This message will only display once per session, but there may be more unusable addon messages.)")
+			error("Chomp: Received an addon message that cannot be parsed, check your addons for updates. (This message will only display once per session, but there may be more unusable addon messages.)")
 		end
 		return
 	end
@@ -173,7 +173,7 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 		end
 		if msgID == 1 then
 			local broadcastTarget, broadcastText = text:match("^([^\058\127]*)[\058\127](.*)$")
-			local ourName = AddOn_Chomp.NameMergedRealm(UnitFullName("player"))
+			local ourName = Chomp.NameMergedRealm(UnitFullName("player"))
 			if sender == ourName or broadcastTarget ~= "" and broadcastTarget ~= ourName then
 				-- Not for us, quit processing.
 				return
@@ -224,7 +224,7 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 			if fullMsgOnly then
 				handlerData = table.concat(buffer)
 				if deserialize then
-					local success, original = pcall(AddOn_Chomp.Deserialize, handlerData)
+					local success, original = pcall(Chomp.Deserialize, handlerData)
 					if success then
 						handlerData = original
 					else
@@ -248,16 +248,16 @@ end
 
 local function ParseInGameMessage(prefix, text, kind, sender, target, zoneChannelID, localID, name, instanceID)
 	if kind == "WHISPER" then
-		target = AddOn_Chomp.NameMergedRealm(target)
+		target = Chomp.NameMergedRealm(target)
 	end
-	return prefix, text, kind, AddOn_Chomp.NameMergedRealm(sender), target, zoneChannelID, localID, name, instanceID
+	return prefix, text, kind, Chomp.NameMergedRealm(sender), target, zoneChannelID, localID, name, instanceID
 end
 
 local function ParseInGameMessageLogged(prefix, text, kind, sender, target, zoneChannelID, localID, name, instanceID)
 	if kind == "WHISPER" then
-		target = AddOn_Chomp.NameMergedRealm(target)
+		target = Chomp.NameMergedRealm(target)
 	end
-	return prefix, text, ("%s:LOGGED"):format(kind), AddOn_Chomp.NameMergedRealm(sender), target, zoneChannelID, localID, name, instanceID
+	return prefix, text, ("%s:LOGGED"):format(kind), Chomp.NameMergedRealm(sender), target, zoneChannelID, localID, name, instanceID
 end
 
 local function ParseBattleNetMessage(prefix, text, kind, bnetIDGameAccount)
@@ -267,7 +267,7 @@ local function ParseBattleNetMessage(prefix, text, kind, bnetIDGameAccount)
 		return
 	end
 
-	return prefix, text, ("%s:BATTLENET"):format(kind), name, AddOn_Chomp.NameMergedRealm(UnitName("player")), 0, 0, "", 0
+	return prefix, text, ("%s:BATTLENET"):format(kind), name, Chomp.NameMergedRealm(UnitName("player")), 0, 0, "", 0
 end
 
 function Internal:TargetSupportsCodecV2(prefix, target)
@@ -567,7 +567,7 @@ function Internal:UpdateBattleNetAccountData()
 		if CanExchangeWithGameAccount(account) then
 			local characterName = account.characterName
 			local realmName = string.gsub(account.realmName, "[%s*%-*]", "")
-			local mergedName = AddOn_Chomp.NameMergedRealm(characterName, realmName)
+			local mergedName = Chomp.NameMergedRealm(characterName, realmName)
 
 			self.bnetGameAccounts[mergedName] = account.gameAccountID
 		end
@@ -663,7 +663,7 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 		end
 		if self.OutgoingQueue then
 			for i, q in ipairs(self.OutgoingQueue) do
-				AddOn_Chomp[q.f](unpack(q, 1, q.n))
+				Chomp[q.f](unpack(q, 1, q.n))
 			end
 			self.OutgoingQueue = nil
 		end
