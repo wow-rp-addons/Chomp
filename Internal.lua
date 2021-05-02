@@ -263,16 +263,12 @@ local function ParseInGameMessageLogged(prefix, text, kind, sender, target, zone
 end
 
 local function ParseBattleNetMessage(prefix, text, kind, bnetIDGameAccount)
-	local accountInfo   = Internal:GetBNGameAccountInfo(bnetIDGameAccount)
-	local characterName = accountInfo.characterName
-	local realmName     = accountInfo.realmName
+	local name = Internal:GetBattleNetAccountName(bnetIDGameAccount)
 
-	-- Build 27144: This can now be nil after removing someone from BattleTag.
-	-- Build 28807: This can be an empty string when someone is sending a message when they're offline.
-	if not characterName or characterName == "" then
+	if not name then
 		return
 	end
-	local name = AddOn_Chomp.NameMergedRealm(characterName, realmName)
+
 	return prefix, text, ("%s:BATTLENET"):format(kind), name, AddOn_Chomp.NameMergedRealm(UnitName("player")), 0, 0, "", 0
 end
 
@@ -472,14 +468,7 @@ end
 	BATTLE.NET WRAPPER API
 ]]
 
-local bnCacheMetatable = setmetatable({}, { __mode = "v" })
-local bnGameAccounts = setmetatable({}, bnCacheMetatable)
-local bnFriendGameAccounts = {}
-
-local function PackBNGameAccountInfo(arg1, arg2, arg3, arg4, arg5, arg6,
-	                                 arg7, arg8, arg9, arg10, arg11, arg12,
-	                                 arg13, arg14, arg15, arg16, arg17, arg18,
-	                                 arg19, arg20, arg21, arg22)
+local function PackGameAccountInfo(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14, arg15, arg16, arg17, arg18, arg19, arg20, arg21, arg22)
 	return {
 		hasFocus       = arg1 ~= 0 and arg or nil,
 		characterName  = arg2 ~= "" and arg or nil,
@@ -502,36 +491,7 @@ local function PackBNGameAccountInfo(arg1, arg2, arg3, arg4, arg5, arg6,
 	}
 end
 
-local function PurgeBNGameAccounts()
-	wipe(bnGameAccounts)
-end
-
-local function PurgeBNFriendGameAccounts()
-	-- The odds of the number of friends changing is quite low, so we don't
-	-- purge the outer table but instead eliminate the per-friend accounts.
-
-	for _, accounts in pairs(bnFriendGameAccounts) do
-		wipe(accounts)
-	end
-end
-
-local function QueryBNGameAccount(accountID)
-	if C_BattleNet then
-		return C_BattleNet.GetGameAccountInfoByID(accountID)
-	else
-		return PackBNGameAccountInfo(BNGetGameAccountInfo(accountID))
-	end
-end
-
-local function QueryBNFriendGameAccount(friendIndex, accountIndex)
-	if C_BattleNet then
-		return C_BattleNet.GetFriendGameAccountInfo(friendIndex, accountIndex)
-	else
-		return PackBNGameAccountInfo(BNGetFriendGameAccountInfo(friendIndex, accountIndex))
-	end
-end
-
-function Internal:GetBNFriendNumGameAccounts(friendIndex)
+local function GetFriendNumGameAccounts(friendIndex)
 	if C_BattleNet then
 		return C_BattleNet.GetFriendNumGameAccounts(friendIndex)
 	else
@@ -539,20 +499,113 @@ function Internal:GetBNFriendNumGameAccounts(friendIndex)
 	end
 end
 
-function Internal:GetBNGameAccountInfo(accountID)
-	local accountInfo = bnGameAccounts[accountID] or QueryBNGameAccount(accountID)
-	bnGameAccounts[accountID] = accountInfo
-	return accountInfo
+local function GetFriendGameAccountInfo(friendIndex, accountIndex)
+	if C_BattleNet then
+		return C_BattleNet.GetFriendGameAccountInfo(friendIndex, accountIndex)
+	else
+		return PackGameAccountInfo(BNGetFriendGameAccountInfo(friendIndex, accountIndex))
+	end
 end
 
-function Internal:GetBNFriendGameAccountInfo(friendIndex, accountIndex)
-	local accounts = bnFriendGameAccounts[friendIndex] or setmetatable({}, bnCacheMetatable)
-	local accountInfo = accounts[accountIndex] or QueryBNFriendGameAccount(friendIndex, accountIndex)
+local function EnumerateFriendGameAccounts()
+	local friendIndex  = 0
+	local friendCount  = BNGetNumFriends()
+	local accountIndex = 0
+	local accountCount = 0
 
-	accounts[accountIndex] = accountInfo
-	bnFriendGameAccounts[friendIndex] = accounts
+	local function NextGameAccount()
+		repeat
+			accountIndex = accountIndex + 1
 
-	return accountInfo
+			if accountIndex > accountCount then
+				friendIndex  = friendIndex + 1
+				accountIndex = 1
+				accountCount = GetFriendNumGameAccounts(friendIndex)
+			end
+		until accountIndex <= accountCount or friendIndex > friendCount
+
+		if friendIndex <= friendCount and accountIndex <= accountCount then
+			return friendIndex, accountIndex, GetFriendGameAccountInfo(friendIndex, accountIndex)
+		end
+	end
+
+	return NextGameAccount
+end
+
+local function NormalizeRealmName(realmName)
+	return (string.gsub(realmName, "[%s-]", ""))
+end
+
+local function CanExchangeWithGameAccount(account)
+	if not account.isOnline then
+		return false  -- Friend isn't even online.
+	elseif account.clientProgram ~= BNET_CLIENT_WOW then
+		return false  -- Friend isn't playing WoW. Imagine.
+	end
+
+	local characterName = account.characterName
+	local realmName     = account.realmName and NormalizeRealmName(account.realmName) or nil
+	local factionName   = account.factionName
+
+	if not characterName or characterName == "" or characterName == UNKNOWNOBJECT then
+		return false  -- Character name is invalid.
+	elseif not realmName or realmName == "" then
+		return false  -- Realm name is invalid.
+	elseif Internal.SameRealm[realmName] and factionName == UnitFactionGroup("player") then
+		return false  -- This character is on the same faction and realm.
+	else
+		return true
+	end
+end
+
+function Internal:UpdateBattleNetAccountData()
+	self.bnetGameAccounts = {}
+
+	if not BNFeaturesEnabledAndConnected() then
+		return  -- Player isn't connected to Battle.net.
+	end
+
+	for _, _, account in EnumerateFriendGameAccounts() do
+		if CanExchangeWithGameAccount(account) then
+			local characterName = account.characterName
+			local realmName = string.gsub(account.realmName, "[%s*%-*]", "")
+			local mergedName = AddOn_Chomp.NameMergedRealm(characterName, realmName)
+
+			self.bnetGameAccounts[mergedName] = account.gameAccountID
+		end
+	end
+end
+
+function Internal:GetBattleNetAccountName(senderAccountID)
+	if not BNFeaturesEnabledAndConnected() then
+		return nil  -- Player isn't connected to Battle.net.
+	elseif not self.bnetGameAccounts then
+		return nil  -- We have no game accounts to search.
+	end
+
+	for playerName, gameAccountID in pairs(self.bnetGameAccounts) do
+		if gameAccountID == senderAccountID then
+			return playerName
+		end
+	end
+
+	return nil
+end
+
+function Internal:GetBattleNetAccountID(targetName)
+	if not BNFeaturesEnabledAndConnected() then
+		return nil  -- Player isn't connected to Battle.net.
+	elseif not self.bnetGameAccounts then
+		return nil  -- We have no game accounts to search.
+	end
+
+	for playerName, gameAccountID in pairs(self.bnetGameAccounts) do
+		if strcmputf8i(playerName, targetName) == 0 then
+			return gameAccountID
+		end
+	end
+
+	return nil
 end
 
 --[[
@@ -587,10 +640,7 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 		or event == "BN_FRIEND_ACCOUNT_ONLINE"
 		or event == "BN_FRIEND_INFO_CHANGED"
 		or event == "FRIENDLIST_UPDATE" then
-		-- Overeager purging of the cache is to be 100% sure we aren't
-		-- missing events; the BN events are sparsely documented.
-		PurgeBNGameAccounts()
-		PurgeBNFriendGameAccounts()
+		Internal:UpdateBattleNetAccountData()
 	elseif event == "PLAYER_LOGIN" then
 		_G.__chomp_internal = nil
 		hooksecurefunc(C_ChatInfo, "SendAddonMessage", HookSendAddonMessage)
@@ -619,6 +669,7 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 			end
 			self.OutgoingQueue = nil
 		end
+		Internal:UpdateBattleNetAccountData()
 	elseif event == "PLAYER_LEAVING_WORLD" then
 		self.unloadTime = GetTime()
 	elseif event == "PLAYER_ENTERING_WORLD" and self.unloadTime then
@@ -631,6 +682,7 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 			end
 		end
 		self.unloadTime = nil
+		Internal:UpdateBattleNetAccountData()
 	end
 end)
 

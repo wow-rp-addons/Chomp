@@ -67,6 +67,7 @@ read_globals = {
 	"PLAYER_REPORT_TYPE_LANGUAGE",
 	"PlayerLocationMixin",
 	"SendChatMessage",
+	"strcmputf8i",
 	"UnitFactionGroup",
 	"UnitFullName",
 	"UnitInParty",
