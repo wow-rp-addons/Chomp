@@ -101,9 +101,9 @@ local FULL_PLAYER_FIND = FULL_PLAYER_NAME:gsub("-", "%%%%-"):format("^.-", ".+$"
 
 function Chomp.NameMergedRealm(name, realm)
 	if type(name) ~= "string" then
-		error("Chomp.NameMergedRealm(): name: expected string, got " .. type(name), 2)
+		error("Chomp.NameMergedRealm: name: expected string, got " .. type(name), 2)
 	elseif name == "" then
-		error("Chomp.NameMergedRealm(): name: expected non-empty string", 2)
+		error("Chomp.NameMergedRealm: name: expected non-empty string", 2)
 	elseif not realm or realm == "" then
 		-- Normally you'd just return the full input name without reformatting,
 		-- but Blizzard has started returning an occasional "Name-Realm Name"
@@ -116,7 +116,7 @@ function Chomp.NameMergedRealm(name, realm)
 			realm = GetRealmName()
 		end
 	elseif name:find(FULL_PLAYER_FIND) then
-		error("Chomp.NameMergedRealm(): name already has a realm name, but realm name also provided")
+		error("Chomp.NameMergedRealm: name already has a realm name, but realm name also provided")
 	end
 	return FULL_PLAYER_NAME:format(name, (realm:gsub("[%s%-]", "")))
 end
@@ -195,11 +195,11 @@ Internal.Serialize = Serialize
 function Chomp.Serialize(object)
 	local objectType = type(object)
 	if not rawget(Serialize, type(object)) then
-		error("Chomp.Serialize(): object: expected serializable type, got " .. objectType, 2)
+		error("Chomp.Serialize: object: expected serializable type, got " .. objectType, 2)
 	end
 	local success, serialized = pcall(Serialize[objectType], object)
 	if not success then
-		error("Chomp.Serialize(): object: could not be serialized due to finding unserializable type", 2)
+		error("Chomp.Serialize: object: could not be serialized due to finding unserializable type", 2)
 	end
 	return serialized
 end
@@ -264,17 +264,17 @@ local EMPTY_ENV = setmetatable({}, {
 
 function Chomp.Deserialize(text)
 	if type(text) ~= "string" then
-		error("Chomp.Deserialize(): text: expected string, got " .. type(text), 2)
+		error("Chomp.Deserialize: text: expected string, got " .. type(text), 2)
 	end
 
 	local isSafe, reason = IsStringLoadSafe(text)
 	if not isSafe then
-		error("Chomp.Deserialize(): text: " .. reason, 2)
+		error("Chomp.Deserialize: text: " .. reason, 2)
 	end
 
 	local func, loadError = loadstring(("return %s"):format(text))
 	if not func then
-		error("Chomp.Deserialize(): text: could not be deserialized: " .. tostring(loadError), 2)
+		error("Chomp.Deserialize: text: could not be deserialized: " .. tostring(loadError), 2)
 	end
 
 	setfenv(func, EMPTY_ENV)
@@ -283,11 +283,11 @@ function Chomp.Deserialize(text)
 	local retType = type(ret)
 
 	if not retSuccess then
-		error("Chomp.Deserialize(): text: error while reading data", 2)
+		error("Chomp.Deserialize: text: error while reading data", 2)
 	elseif not Serialize[retType] then
-		error("Chomp.Deserialize(): text: deserialized to invalid type: " .. type(ret), 2)
+		error("Chomp.Deserialize: text: deserialized to invalid type: " .. type(ret), 2)
 	elseif retType == "table" and text:find("function", nil, true) and not IsTableSafe(ret) then
-		error("Chomp.Deserialize(): text: deserialized table included forbidden type", 2)
+		error("Chomp.Deserialize: text: deserialized table included forbidden type", 2)
 	end
 
 	return ret
@@ -295,7 +295,7 @@ end
 
 function Chomp.CheckLoggedContents(text)
 	if type(text) ~= "string" then
-		error("Chomp.CheckLoggedContents(): text: expected string, got " .. type(text), 2)
+		error("Chomp.CheckLoggedContents: text: expected string, got " .. type(text), 2)
 	end
 	if text:find("[%z\001-\009\011-\031\127]") then
 		return false, "ASCII_CONTROL"
@@ -381,12 +381,12 @@ end
 
 function Chomp.EncodeQuotedPrintable(text, codecVersion)
 	if type(text) ~= "string" then
-		error("Chomp.EncodeQuotedPrintable(): text: expected string, got " .. type(text), 2)
+		error("Chomp.EncodeQuotedPrintable: text: expected string, got " .. type(text), 2)
 	elseif codecVersion ~= nil then
 		if type(codecVersion) ~= "number" then
-			error("Chomp.EncodeQuotedPrintable(): codecVersion: expected number or nil, got " .. type(codecVersion), 2)
+			error("Chomp.EncodeQuotedPrintable: codecVersion: expected number or nil, got " .. type(codecVersion), 2)
 		elseif not CodecsByVersion[codecVersion] then
-			error("Chomp.EncodeQuotedPrintable(): codecVersion: unsupported codec version " .. type(codecVersion), 2)
+			error("Chomp.EncodeQuotedPrintable: codecVersion: unsupported codec version " .. type(codecVersion), 2)
 		end
 	end
 
@@ -456,12 +456,12 @@ end
 
 function Chomp.DecodeQuotedPrintable(text, codecVersion)
 	if type(text) ~= "string" then
-		error("Chomp.DecodeQuotedPrintable(): text: expected string, got " .. type(text), 2)
+		error("Chomp.DecodeQuotedPrintable: text: expected string, got " .. type(text), 2)
 	elseif codecVersion ~= nil then
 		if type(codecVersion) ~= "number" then
-			error("Chomp.DecodeQuotedPrintable(): codecVersion: expected number or nil, got " .. type(codecVersion), 2)
+			error("Chomp.DecodeQuotedPrintable: codecVersion: expected number or nil, got " .. type(codecVersion), 2)
 		elseif not CodecsByVersion[codecVersion] then
-			error("Chomp.DecodeQuotedPrintable(): codecVersion: unsupported codec version " .. type(codecVersion), 2)
+			error("Chomp.DecodeQuotedPrintable: codecVersion: unsupported codec version " .. type(codecVersion), 2)
 		end
 	end
 
@@ -473,18 +473,18 @@ end
 
 function Chomp.SafeSubString(text, first, last, textLen, codecVersion)
 	if type(text) ~= "string" then
-		error("Chomp.SafeSubString(): text: expected string, got " .. type(text), 2)
+		error("Chomp.SafeSubString: text: expected string, got " .. type(text), 2)
 	elseif type(first) ~= "number" then
-		error("Chomp.SafeSubString(): first: expected number, got " .. type(first), 2)
+		error("Chomp.SafeSubString: first: expected number, got " .. type(first), 2)
 	elseif type(last) ~= "number" then
-		error("Chomp.SafeSubString(): last: expected number, got " .. type(last), 2)
+		error("Chomp.SafeSubString: last: expected number, got " .. type(last), 2)
 	elseif textLen and type(textLen) ~= "number" then
-		error("Chomp.SafeSubString(): textLen: expected number or nil, got " .. type(textLen), 2)
+		error("Chomp.SafeSubString: textLen: expected number or nil, got " .. type(textLen), 2)
 	elseif codecVersion ~= nil then
 		if type(codecVersion) ~= "number" then
-			error("Chomp.SafeSubstring(): codecVersion: expected number or nil, got " .. type(codecVersion), 2)
+			error("Chomp.SafeSubstring: codecVersion: expected number or nil, got " .. type(codecVersion), 2)
 		elseif not CodecsByVersion[codecVersion] then
-			error("Chomp.SafeSubstring(): codecVersion: unsupported codec version " .. type(codecVersion), 2)
+			error("Chomp.SafeSubstring: codecVersion: unsupported codec version " .. type(codecVersion), 2)
 		end
 	end
 
@@ -495,7 +495,7 @@ function Chomp.SafeSubString(text, first, last, textLen, codecVersion)
 		textLen = #text
 	end
 	if first > textLen then
-		error("Chomp.SafeSubString(): first: starting index exceeds text length", 2)
+		error("Chomp.SafeSubString: first: starting index exceeds text length", 2)
 	end
 	if textLen > last then
 		local b3, b2, b1 = text:byte(last - 2, last)
