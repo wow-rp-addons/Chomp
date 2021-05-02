@@ -27,6 +27,17 @@ local PRIORITIES_HASH = { HIGH = true, MEDIUM = true, LOW = true }
 local PRIORITY_TO_CTL = { LOW = "BULK", MEDIUM = "NORMAL", HIGH = "ALERT" }
 local OVERHEAD = 27
 
+-- TODO: Can remove this once Classic, BC, and Retail are all updated.
+local function CopyValuesAsKeys(tbl)
+	local output = {}
+
+	for k, v in ipairs(tbl) do
+		output[v] = v
+	end
+
+	return output
+end
+
 local function QueueMessageOut(func, ...)
 	if not Internal.OutgoingQueue then
 		Internal.OutgoingQueue = {}
@@ -37,6 +48,13 @@ local function QueueMessageOut(func, ...)
 	local q = Internal.OutgoingQueue
 	q[#q + 1] = t
 end
+
+Chomp.Event = CopyValuesAsKeys(
+	{
+		"OnError",
+		"OnMessageReceived",
+	}
+)
 
 function Chomp.SendAddonMessage(prefix, text, kind, target, priority, queue, callback, callbackArg)
 	if type(prefix) ~= "string" then
@@ -602,24 +620,6 @@ function Chomp.ReportGUID(prefix, guid, customMessage)
 	end
 	return false, reason
 end
-
--- TODO: Can remove this once Classic, BC, and Retail are all updated.
-local function CopyValuesAsKeys(tbl)
-	local output = {}
-
-	for k, v in ipairs(tbl) do
-		output[v] = v
-	end
-
-	return output
-end
-
-Chomp.Event = CopyValuesAsKeys(
-	{
-		"OnMessageReceived",
-		"OnError",
-	}
-)
 
 function Chomp.RegisterCallback(event, func, owner)
 	if type(event) ~= "string" then

@@ -285,6 +285,36 @@ end
 	INTERNAL BANDWIDTH POOL
 ]]
 
+function Internal:ShouldSendMessage(message)
+	if (message.kind == "RAID" or message.kind == "PARTY") and not IsInGroup(LE_PARTY_CATEGORY_HOME) then
+		return false  -- Message is destined for a group channel, but the player isn't in a group.
+	elseif message.kind == "INSTANCE_CHAT" and not IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
+		return false  -- Message is destined for an instance channel, but the player isn't in an instance group.
+	else
+		return true
+	end
+end
+
+function Internal:TrySendMessage(message)
+	local didSend
+
+	if self:ShouldSendMessage(message) then
+		self.isSending = true
+		local ok, result = xpcall(message.f, CallErrorHandler, unpack(message, 1, 4))
+		self.isSending = false
+
+		didSend = (ok and result ~= false)
+	else
+		didSend = false
+	end
+
+	if message.callback then
+		xpcall(message.callback, CallErrorHandler, message.callbackArg, didSend)
+	end
+
+	return didSend
+end
+
 function Internal:RunQueue()
 	if self:UpdateBytes() <= 0 then
 		return
@@ -308,15 +338,9 @@ function Internal:RunQueue()
 			else -- No more messages in this queue.
 				priority.byName[queue.name] = nil
 			end
-			local didSend = false
-			if (message.kind ~= "RAID" and message.kind ~= "PARTY" or IsInGroup(LE_PARTY_CATEGORY_HOME)) and (message.kind ~= "INSTANCE_CHAT" or IsInGroup(LE_PARTY_CATEGORY_INSTANCE)) then
+
+			if self:TrySendMessage(message) then
 				priority.bytes = priority.bytes - message.length
-				self.isSending = true
-				didSend = message.f(unpack(message, 1, 4)) ~= false
-				self.isSending = false
-			end
-			if message.callback then
-				xpcall(message.callback, CallErrorHandler, message.callbackArg, didSend)
 			end
 		end
 		if not priority[1] then
