@@ -563,6 +563,8 @@ function Internal:UpdateBattleNetAccountData()
 
 	if not BNFeaturesEnabledAndConnected() then
 		return  -- Player isn't connected to Battle.net.
+	elseif not IsLoggedIn() then
+		return  -- Player hasn't yet logged in.
 	end
 
 	for _, _, account in EnumerateFriendGameAccounts() do
