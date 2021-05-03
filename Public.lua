@@ -411,6 +411,10 @@ function AddOn_Chomp.RegisterAddonPrefix(prefix, callback, prefixSettings)
 	end
 end
 
+function AddOn_Chomp.IsAddonPrefixRegistered(prefix)
+	return Internal.Prefixes[prefix] ~= nil
+end
+
 local nextSessionID = math.random(0, 4095)
 local function SplitAndSend(sendFunc, maxSize, bitField, prefix, text, ...)
 	local textLen = #text
