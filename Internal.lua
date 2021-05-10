@@ -291,7 +291,7 @@ function Internal:RunQueue()
 	end
 	local active = {}
 	for i, priority in ipairs(PRIORITIES) do
-		if self[priority][1] then -- Priority has queues.
+		if self[priority].front then -- Priority has queues.
 			active[#active + 1] = self[priority]
 		end
 	end
@@ -300,11 +300,11 @@ function Internal:RunQueue()
 	self.bytes = 0
 	for i, priority in ipairs(active) do
 		priority.bytes = priority.bytes + bytes
-		while priority[1] and priority.bytes >= priority[1][1].length do
-			local queue = priority:Remove(1)
-			local message = queue:Remove(1)
-			if queue[1] then -- More messages in this queue.
-				priority[#priority + 1] = queue
+		while priority.front and priority.bytes >= priority.front.front.length do
+			local queue = priority:PopFront()
+			local message = queue:PopFront()
+			if queue.front then -- More messages in this queue.
+				priority:PushBack(queue)
 			else -- No more messages in this queue.
 				priority.byName[queue.name] = nil
 			end
@@ -319,7 +319,7 @@ function Internal:RunQueue()
 				xpcall(message.callback, CallErrorHandler, message.callbackArg, didSend)
 			end
 		end
-		if not priority[1] then
+		if not priority.front then
 			remaining = remaining - 1
 			self.bytes = self.bytes + priority.bytes
 			priority.bytes = 0
@@ -351,14 +351,11 @@ function Internal:Enqueue(priorityName, queueName, message)
 	local priority = self[priorityName]
 	local queue = priority.byName[queueName]
 	if not queue then
-		queue = {
-			name = queueName,
-			Remove = table.remove,
-		}
+		queue = Mixin({ name = queueName }, DoublyLinkedListMixin)
 		priority.byName[queueName] = queue
-		priority[#priority + 1] = queue
+		priority:PushBack(queue)
 	end
-	queue[#queue + 1] = message
+	queue:PushBack(message)
 	self:StartQueue()
 end
 
@@ -368,7 +365,7 @@ Internal.BPS = BPS
 Internal.BURST = BURST
 
 for i, priority in ipairs(PRIORITIES) do
-	Internal[priority] = { bytes = 0, byName = {}, Remove = table.remove, }
+	Internal[priority] = Mixin({ bytes = 0, byName = {} }, DoublyLinkedListMixin)
 end
 
 function Internal:StartQueue()
