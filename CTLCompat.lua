@@ -19,11 +19,12 @@
 	mikk, which was released into the public domain.
 ]]
 
-if not __chomp_internal or not __chomp_internal.LOADING then
+local Chomp = LibStub:GetLibrary("Chomp", true)
+local Internal = Chomp and Chomp.Internal or nil
+
+if not Chomp or not Internal or not Internal.LOADING then
 	return
 end
-
-local Internal = __chomp_internal
 
 -- The following code provides a compatibility layer for addons using
 -- ChatThrottleLib. It won't load (and Chomp will feed messages into CTL) if
@@ -60,7 +61,7 @@ function ChatThrottleLib:SendAddonMessage(priorityName, prefix, text, kind, targ
 	if kind == "CHANNEL" then
 		target = tonumber(target)
 	end
-	AddOn_Chomp.SendAddonMessage(prefix, text, kind, target, PRIORITY_FROM_CTL[priorityName], queueName or ("%s%s%s"):format(prefix, kind, (tostring(target) or "")), callback, callbackArg)
+	Chomp.SendAddonMessage(prefix, text, kind, target, PRIORITY_FROM_CTL[priorityName], queueName or ("%s%s%s"):format(prefix, kind, (tostring(target) or "")), callback, callbackArg)
 end
 
 function ChatThrottleLib:SendChatMessage(priorityName, prefix, text, kind, language, target, queueName, callback, callbackArg)
@@ -74,7 +75,7 @@ function ChatThrottleLib:SendChatMessage(priorityName, prefix, text, kind, langu
 	if kind == "CHANNEL" then
 		target = tonumber(target)
 	end
-	AddOn_Chomp.SendChatMessage(text, kind, language, target, PRIORITY_FROM_CTL[priorityName], queueName or ("%s%s%s"):format(prefix, (kind or "SAY"), (tostring(target) or "")), callback, callbackArg)
+	Chomp.SendChatMessage(text, kind, language, target, PRIORITY_FROM_CTL[priorityName], queueName or ("%s%s%s"):format(prefix, (kind or "SAY"), (tostring(target) or "")), callback, callbackArg)
 end
 
 function ChatThrottleLib.Hook_SendAddonMessage()
