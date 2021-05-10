@@ -14,7 +14,7 @@
 	CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ]]
 
-local VERSION = 19
+local VERSION = 18
 
 if IsLoggedIn() then
 	error(("Chomp Message Library (embedded: %s) cannot be loaded after login."):format((...)))
@@ -685,8 +685,8 @@ end)
 
 Internal.VERSION = VERSION
 
--- v19+: The future is now old man. These need to exist for compatibility, and
---       to prevent issues where pre-v19 versions would replace newer ones if
+-- v18+: The future is now old man. These need to exist for compatibility, and
+--       to prevent issues where pre-v18 versions would replace newer ones if
 --       __chomp_internal were to just disappear.
 --
 --       Note that we still clear __chomp_internal once PLAYER_LOGIN has
