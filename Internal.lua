@@ -397,7 +397,9 @@ end
 -- Hooks don't trigger if the hooked function errors, so there's no need to
 -- check parameters, if those parameters cause errors (which most don't now).
 
-local function MessageEventFilter_SYSTEM (self, event, text)
+local lastFilteredLineID = nil
+
+local function MessageEventFilter_SYSTEM (self, event, text, ...)
 	local name = text:match(ERR_CHAT_PLAYER_NOT_FOUND_S:format("(.+)"))
 	if not name then
 		return false
@@ -405,7 +407,14 @@ local function MessageEventFilter_SYSTEM (self, event, text)
 		Internal.Filter[name] = nil
 		return false
 	end
-	Internal:TriggerEvent("OnError", name)
+
+	local lineID = select(10, ...)
+
+	if lineID ~= lastFilteredLineID then
+		Internal:TriggerEvent("OnError", name)
+		lastFilteredLineID = lineID
+	end
+
 	return true
 end
 
