@@ -71,6 +71,7 @@ read_globals = {
 	"PlayerLocationMixin",
 	"SendChatMessage",
 	"strcmputf8i",
+	"tInvert",
 	"UnitFactionGroup",
 	"UnitFullName",
 	"UnitInParty",
