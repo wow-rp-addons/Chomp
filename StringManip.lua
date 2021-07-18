@@ -151,6 +151,12 @@ function Serialize.string(input)
 	return ("%q"):format(input)
 end
 
+local RESERVED_WORDS = tInvert({
+	"and", "break", "do", "else", "elseif", "end", "false", "for", "function",
+	"if", "in", "local", "nil", "not", "or", "repeat", "return", "then",
+	"true", "until", "while",
+});
+
 function Serialize.table(input)
 	-- These functions are called in loops, so upvalue them eagerly.
 	local floor     = math.floor
@@ -178,7 +184,7 @@ function Serialize.table(input)
 		if typeK ~= "number" or k > numArray or k < 1 or k ~= floor(k) then
 			n = n + 1
 
-			if typeK == "string" and strfind(k, "^[a-zA-Z_][a-zA-Z0-9_]*$") then
+			if typeK == "string" and strfind(k, "^[a-zA-Z_][a-zA-Z0-9_]*$") and not RESERVED_WORDS[k] then
 				-- Optimization for identifier-like string keys (no braces!).
 				output[n] = strformat("%s=%s", k, Serialize[typeV](v))
 			else
