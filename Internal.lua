@@ -157,7 +157,8 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 	end
 
 	local hasVersion16 = bit.band(bitField, Internal.BITS.VERSION16) ~= 0
-	if not hasVersion16 then
+	local hasVersion20 = bit.band(bitField, Internal.BITS.VERSION20) ~= 0
+	if not hasVersion16 and not hasVersion20 then
 		-- Sender is using a version that's far too old and no longer supported.
 		return
 	end
