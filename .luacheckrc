@@ -48,6 +48,7 @@ read_globals = {
 	"C_Timer.After",
 	"CallErrorHandler",
 	"ChatFrame_AddMessageEventFilter",
+	"CopyValuesAsKeys",
 	"CreateFrame",
 	"CreateFromMixins",
 	"DoublyLinkedListMixin",

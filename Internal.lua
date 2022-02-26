@@ -87,7 +87,7 @@ end
 
 Internal.BITS = {
 	SERIALIZE = 0x001,
-	CODECV2   = 0x002,  -- Indicates the message should be processed with codec version 2. Relies upon VERSION16.
+	VERSION20 = 0x002,  -- Indicates v20+ of Chomp is in use from the sender.
 	UNUSED9   = 0x004,
 	VERSION16 = 0x008,  -- Indicates v16+ of Chomp is in use from the sender.
 	BROADCAST = 0x010,
@@ -138,10 +138,9 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 		text = userText
 	end
 
-	local codecVersion = Internal:GetCodecVersionFromBitfield(bitField)
 	local method = channel:match("%:(%u+)$")
 	if method == "BATTLENET" or method == "LOGGED" then
-		text = Internal.DecodeQuotedPrintable(text, method == "LOGGED", codecVersion)
+		text = Internal.DecodeQuotedPrintable(text, method == "LOGGED")
 	end
 
 	if bit.bor(bitField, Internal.KNOWN_BITS) ~= Internal.KNOWN_BITS or bit.band(bitField, Internal.BITS.DEPRECATE) == Internal.BITS.DEPRECATE then
@@ -158,10 +157,9 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 	end
 
 	local hasVersion16 = bit.band(bitField, Internal.BITS.VERSION16) ~= 0
-	if hasVersion16 then
-		prefixData[sender].supportsCodecV2 = true
-	else
-		prefixData[sender].supportsCodecV2 = false
+	if not hasVersion16 then
+		-- Sender is using a version that's far too old and no longer supported.
+		return
 	end
 
 	local isBroadcast = bit.band(bitField, Internal.BITS.BROADCAST) == Internal.BITS.BROADCAST
@@ -268,17 +266,6 @@ local function ParseBattleNetMessage(prefix, text, kind, bnetIDGameAccount)
 	end
 
 	return prefix, text, ("%s:BATTLENET"):format(kind), name, Chomp.NameMergedRealm(UnitName("player")), 0, 0, "", 0
-end
-
-function Internal:TargetSupportsCodecV2(prefix, target)
-	local prefixData = self.Prefixes[prefix]
-	local targetData = prefixData and prefixData[target] or nil
-
-	return targetData and targetData.supportsCodecV2 or false
-end
-
-function Internal:GetCodecVersionFromBitfield(bitField)
-	return (bit.band(bitField, Internal.BITS.CODECV2) ~= 0) and 2 or 1
 end
 
 --[[

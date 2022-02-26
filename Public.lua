@@ -427,11 +427,10 @@ local function SplitAndSend(sendFunc, maxSize, bitField, prefix, text, ...)
 	local sessionID = nextSessionID
 	nextSessionID = (nextSessionID + 1) % 4096
 	local position = 1
-	local codecVersion = Internal:GetCodecVersionFromBitfield(bitField)
 	while position <= textLen do
 		-- Only *need* to do a safe substring for encoded channels, but doing so
 		-- always shouldn't hurt.
-		local msgText, offset = Chomp.SafeSubString(text, position, position + maxSize - 1, textLen, codecVersion)
+		local msgText, offset = Chomp.SafeSubString(text, position, position + maxSize - 1, textLen)
 		if offset > 0 then
 			-- Update total offset and total message number if needed.
 			totalOffset = totalOffset + offset
@@ -496,7 +495,19 @@ function Chomp.SmartAddonMessage(prefix, data, kind, target, messageOptions)
 	end
 
 	local bitField = 0x000
-	bitField = bit.bor(bitField, Internal.BITS.VERSION16)
+
+	-- We set both the v16+ and v20+ bits to support peers within that version
+	-- range.
+	--
+	-- In v16-v19, the 'VERSION20' bit is called 'CODECV2' and is set when
+	-- a message is sent with the newer serialization codec which changed the
+	-- escape byte. This is only set when two peers can negotiate the newer
+	-- codec.
+	--
+	-- In v20+, the newer codec is always used and the older one removed,
+	-- so the bit needs to always be set.
+
+	bitField = bit.bor(bitField, Internal.BITS.VERSION16, Internal.BITS.VERSION20)
 
 	if messageOptions.serialize then
 		bitField = bit.bor(bitField, Internal.BITS.SERIALIZE)
@@ -513,15 +524,6 @@ function Chomp.SmartAddonMessage(prefix, data, kind, target, messageOptions)
 		target = Chomp.NameMergedRealm(target)
 	end
 
-	local codecVersion
-
-	if Internal:TargetSupportsCodecV2(prefix, target) then
-		codecVersion = 2
-		bitField = bit.bor(bitField, Internal.BITS.CODECV2)
-	else
-		codecVersion = 1
-	end
-
 	local queue = ("%s%s%s"):format(prefix, kind, tostring(target) or "")
 
 	if kind == "WHISPER" then
@@ -529,7 +531,7 @@ function Chomp.SmartAddonMessage(prefix, data, kind, target, messageOptions)
 		-- crossrealm targets.
 		local bnetIDGameAccount = Internal:GetBattleNetAccountID(target)
 		if bnetIDGameAccount then
-			ToBattleNet(bitField, prefix, Internal.EncodeQuotedPrintable(data, false, codecVersion), kind, bnetIDGameAccount, messageOptions.priority, messageOptions.queue or queue)
+			ToBattleNet(bitField, prefix, Internal.EncodeQuotedPrintable(data, false), kind, bnetIDGameAccount, messageOptions.priority, messageOptions.queue or queue)
 			return "BATTLENET"
 		end
 		local targetUnit = Ambiguate(target, "none")
@@ -547,7 +549,7 @@ function Chomp.SmartAddonMessage(prefix, data, kind, target, messageOptions)
 		end
 	end
 	if not messageOptions.binaryBlob then
-		ToInGameLogged(bitField, prefix, Internal.EncodeQuotedPrintable(data, true, codecVersion), kind, target, messageOptions.priority, messageOptions.queue or queue)
+		ToInGameLogged(bitField, prefix, Internal.EncodeQuotedPrintable(data, true), kind, target, messageOptions.priority, messageOptions.queue or queue)
 		return "LOGGED"
 	end
 	ToInGame(bitField, prefix, data, kind, target, messageOptions.priority, messageOptions.queue or queue)
@@ -605,17 +607,6 @@ function Chomp.ReportGUID(prefix, guid, customMessage)
 		return true, reason
 	end
 	return false, reason
-end
-
--- TODO: Can remove this once Classic, BC, and Retail are all updated.
-local function CopyValuesAsKeys(tbl)
-	local output = {}
-
-	for k, v in ipairs(tbl) do
-		output[v] = v
-	end
-
-	return output
 end
 
 Chomp.Event = CopyValuesAsKeys(
