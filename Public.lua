@@ -496,7 +496,12 @@ function Chomp.SmartAddonMessage(prefix, data, kind, target, messageOptions)
 	end
 
 	local bitField = 0x000
-	bitField = bit.bor(bitField, Internal.BITS.VERSION16)
+	local codecVersion = 2
+
+	-- v20+: Always set the CODECV2 bit. All clients on the network at this
+	--       point should support it. Setting this bit unconditionally will
+	--       eventually allow us to deprecate receipt of v1 codec data.
+	bitField = bit.bor(bitField, Internal.BITS.VERSION16, Internal.BITS.CODECV2)
 
 	if messageOptions.serialize then
 		bitField = bit.bor(bitField, Internal.BITS.SERIALIZE)
@@ -511,15 +516,6 @@ function Chomp.SmartAddonMessage(prefix, data, kind, target, messageOptions)
 
 	if kind == "WHISPER" then
 		target = Chomp.NameMergedRealm(target)
-	end
-
-	local codecVersion
-
-	if Internal:TargetSupportsCodecV2(prefix, target) then
-		codecVersion = 2
-		bitField = bit.bor(bitField, Internal.BITS.CODECV2)
-	else
-		codecVersion = 1
 	end
 
 	local queue = ("%s%s%s"):format(prefix, kind, tostring(target) or "")
