@@ -496,18 +496,14 @@ function Chomp.SmartAddonMessage(prefix, data, kind, target, messageOptions)
 
 	local bitField = 0x000
 
-	-- We set both the v16+ and v20+ bits to support peers within that version
-	-- range.
-	--
-	-- In v16-v19, the 'VERSION20' bit is called 'CODECV2' and is set when
-	-- a message is sent with the newer serialization codec which changed the
-	-- escape byte. This is only set when two peers can negotiate the newer
-	-- codec.
+	-- In v16-v19, the 'CODECV2' bit and is set when a message is sent with
+	-- the newer serialization codec which changed the escape byte. This is
+	-- only set when two peers can negotiate the newer codec.
 	--
 	-- In v20+, the newer codec is always used and the older one removed,
-	-- so the bit needs to always be set.
+	-- so the bit needs to always be set as it is expected on receipt.
 
-	bitField = bit.bor(bitField, Internal.BITS.VERSION16, Internal.BITS.VERSION20)
+	bitField = bit.bor(bitField, Internal.BITS.VERSION16, Internal.BITS.CODECV2)
 
 	if messageOptions.serialize then
 		bitField = bit.bor(bitField, Internal.BITS.SERIALIZE)

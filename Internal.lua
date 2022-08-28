@@ -87,7 +87,7 @@ end
 
 Internal.BITS = {
 	SERIALIZE = 0x001,
-	VERSION20 = 0x002,  -- Indicates v20+ of Chomp is in use from the sender.
+	CODECV2   = 0x002,  -- Indicates deserialization codec v2 (v16+) is in use from the sender.
 	UNUSED9   = 0x004,
 	VERSION16 = 0x008,  -- Indicates v16+ of Chomp is in use from the sender.
 	BROADCAST = 0x010,
@@ -157,8 +157,8 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 	end
 
 	local hasVersion16 = bit.band(bitField, Internal.BITS.VERSION16) ~= 0
-	local hasVersion20 = bit.band(bitField, Internal.BITS.VERSION20) ~= 0
-	if not hasVersion16 and not hasVersion20 then
+	local hasCodecV2 = bit.band(bitField, Internal.BITS.CODECV2) ~= 0
+	if not hasVersion16 or not hasCodecV2 then
 		-- Sender is using a version that's far too old and no longer supported.
 		return
 	end
