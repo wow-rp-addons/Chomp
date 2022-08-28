@@ -153,15 +153,15 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 		return
 	end
 
-	if not prefixData[sender] then
-		prefixData[sender] = {}
+	local hasVersion16 = bit.band(bitField, Internal.BITS.VERSION16) ~= 0
+	if not hasVersion16 then
+		-- Sender is using a version of Chomp that's far too old. Ignore
+		-- as we probably can't communicate with them anyway.
+		return;
 	end
 
-	local hasVersion16 = bit.band(bitField, Internal.BITS.VERSION16) ~= 0
-	if hasVersion16 then
-		prefixData[sender].supportsCodecV2 = true
-	else
-		prefixData[sender].supportsCodecV2 = false
+	if not prefixData[sender] then
+		prefixData[sender] = {}
 	end
 
 	local isBroadcast = bit.band(bitField, Internal.BITS.BROADCAST) == Internal.BITS.BROADCAST
@@ -268,13 +268,6 @@ local function ParseBattleNetMessage(prefix, text, kind, bnetIDGameAccount)
 	end
 
 	return prefix, text, ("%s:BATTLENET"):format(kind), name, Chomp.NameMergedRealm(UnitName("player")), 0, 0, "", 0
-end
-
-function Internal:TargetSupportsCodecV2(prefix, target)
-	local prefixData = self.Prefixes[prefix]
-	local targetData = prefixData and prefixData[target] or nil
-
-	return targetData and targetData.supportsCodecV2 or false
 end
 
 function Internal:GetCodecVersionFromBitfield(bitField)
