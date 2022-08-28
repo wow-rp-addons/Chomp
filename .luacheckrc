@@ -82,5 +82,5 @@ read_globals = {
 	"UNKNOWNOBJECT",
 	"wipe",
 	"WOW_PROJECT_ID",
-	"WOW_PROJECT_RETAIL",
+	"WOW_PROJECT_MAINLINE",
 }
