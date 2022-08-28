@@ -14,7 +14,7 @@
 	CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ]]
 
-local VERSION = 19
+local VERSION = 20
 
 if IsLoggedIn() then
 	error(("Chomp Message Library (embedded: %s) cannot be loaded after login."):format((...)))
@@ -42,7 +42,7 @@ Internal.callbacks = LibStub:GetLibrary("CallbackHandler-1.0"):New(Internal)
 -- Lower rates on non-Retail clients due to aggressive throttling.
 local BURST, BPS
 
-if WOW_PROJECT_ID == WOW_PROJECT_RETAIL then
+if WOW_PROJECT_ID == WOW_PROJECT_MAINLINE then
 	BURST, BPS = 8192, 2048
 else
 	BURST, BPS = 4000, 800
