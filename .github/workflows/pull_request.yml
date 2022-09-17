@@ -7,7 +7,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Run Luacheck
         uses: nebularg/actions-luacheck@v1
@@ -16,9 +18,9 @@ jobs:
           annotate: warning
 
       - name: Create Package
-        uses: BigWigsMods/packager@master
+        uses: BigWigsMods/packager@v2
         with:
-          args: -d -z
+          args: -d -z -S
 
       - uses: actions/upload-artifact@v2
         with:

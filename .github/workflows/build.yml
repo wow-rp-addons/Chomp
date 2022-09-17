@@ -9,9 +9,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
         with:
-          fetch-depth: 100
+          fetch-depth: 0
 
       - name: Run Luacheck
         uses: nebularg/actions-luacheck@v1
@@ -23,6 +23,8 @@ jobs:
         uses: BigWigsMods/packager@master
         env:
           GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: -S
 
       - name: Send Webhook Notification
         if: failure()

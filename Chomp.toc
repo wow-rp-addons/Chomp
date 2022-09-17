@@ -6,7 +6,12 @@
 ## Author: Justin Snelgrove
 ## Version: @project-version@
 ## Notes: Battle.net and in-game messaging library with smart addon whispers.
+## OptionalDeps: CallbackHandler-1.0, ChatThrottleLib, LibStub
 ## X-Category: Library
 ## X-License: ISC
+
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
+Libs\ChatThrottleLib\ChatThrottleLib.xml
 
 Chomp.xml
