@@ -14,7 +14,7 @@
 	CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ]]
 
-local VERSION = 25
+local VERSION = 26
 
 if IsLoggedIn() then
 	error(("Chomp Message Library (embedded: %s) cannot be loaded after login."):format((...)))
@@ -33,30 +33,6 @@ Chomp.Internal.LOADING = true
 local Internal = Chomp.Internal
 
 Internal.callbacks = LibStub:GetLibrary("CallbackHandler-1.0"):New(Internal)
-
---[[
-	CONSTANTS
-]]
-
--- Safe instantaneous burst bytes and safe susatined bytes per second.
--- Lower rates on non-Retail clients due to aggressive throttling.
-local BURST, BPS
-
-if WOW_PROJECT_ID == WOW_PROJECT_MAINLINE then
-	BURST, BPS = 8192, 2048
-else
-	BURST, BPS = 4000, 800
-end
-
--- These values were safe on 8.0 beta, but are unsafe on 7.3 live. Normally I'd
--- love to automatically use them if 8.0 is live, but it's not 100% clear if
--- this is a 8.0 thing or a test realm thing.
---local BURST, BPS = 16384, 4096
-local OVERHEAD = 27
-
-local POOL_TICK = 0.2
-
-local PRIORITIES = { "HIGH", "MEDIUM", "LOW" }
 
 --[[
 	INTERNAL TABLES
@@ -193,7 +169,7 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 	end
 
 	if prefixData.rawCallback then
-		xpcall(prefixData.rawCallback, CallErrorHandler, prefix, text, channel, sender, target, zoneChannelID, localID, name, instanceID, nil, nil, nil, sessionID, msgID, msgTotal, bitField)
+		securecallfunction(prefixData.rawCallback, prefix, text, channel, sender, target, zoneChannelID, localID, name, instanceID, nil, nil, nil, sessionID, msgID, msgTotal, bitField)
 	end
 
 	local deserialize = bit.band(bitField, Internal.BITS.SERIALIZE) == Internal.BITS.SERIALIZE
@@ -233,7 +209,7 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 				end
 			end
 			if prefixData.validTypes[type(handlerData)] then
-				xpcall(prefixData.callback, CallErrorHandler, prefix, handlerData, channel, sender, target, zoneChannelID, localID, name, instanceID, nil, nil, nil, sessionID, msgID, msgTotal, bitField)
+				securecallfunction(prefixData.callback, prefix, handlerData, channel, sender, target, zoneChannelID, localID, name, instanceID, nil, nil, nil, sessionID, msgID, msgTotal, bitField)
 				Internal:TriggerEvent("OnMessageReceived", prefix, handlerData, channel, sender, target, zoneChannelID, localID, name, instanceID, nil, nil, nil, sessionID, msgID, msgTotal, bitField)
 			end
 			buffer[i] = false
@@ -268,154 +244,6 @@ local function ParseBattleNetMessage(prefix, text, kind, bnetIDGameAccount)
 	end
 
 	return prefix, text, ("%s:BATTLENET"):format(kind), name, Chomp.NameMergedRealm(UnitName("player")), 0, 0, "", 0
-end
-
---[[
-	INTERNAL BANDWIDTH POOL
-]]
-
-local SendAddonMessageResult = Mixin({
-    Success = 0,
-    InvalidPrefix = 1,
-    InvalidMessage = 2,
-    AddonMessageThrottle = 3,
-    InvalidChatType = 4,
-    NotInGroup = 5,
-    TargetRequired = 6,
-    InvalidChannel = 7,
-    ChannelThrottle = 8,
-    GeneralError = 9,  -- Reporting for duty, sir!
-}, Enum.SendAddonMessageResult or {})
-
-function Internal:MapToSendAddonMessageResult(result)
-	if result == true then
-		result = SendAddonMessageResult.Success
-	elseif result == false then
-		result = SendAddonMessageResult.GeneralError
-	end
-
-	return result
-end
-
-function Internal:IsRetryMessageResult(result)
-	if result == SendAddonMessageResult.AddonMessageThrottle then
-		return true
-	elseif result == SendAddonMessageResult.ChannelThrottle then
-		return true
-	else
-		return false
-	end
-end
-
-function Internal:RunQueue()
-	if self:UpdateBytes() <= 0 then
-		return
-	end
-	local active = {}
-	local blockedQueues = {}
-	for i, priority in ipairs(PRIORITIES) do
-		if self[priority].front then -- Priority has queues.
-			active[#active + 1] = self[priority]
-		end
-	end
-	local bytes = (#active > 0 and self.bytes / #active or 0)
-	self.bytes = 0
-	for i, priority in ipairs(active) do
-		priority.bytes = priority.bytes + bytes
-		while priority.front and priority.bytes >= priority.front.front.length do
-			local queue = priority:PopFront()
-			local message = queue:PopFront()
-			local sendResult = SendAddonMessageResult.GeneralError
-			if (message.kind ~= "RAID" and message.kind ~= "PARTY" or IsInGroup(LE_PARTY_CATEGORY_HOME)) and (message.kind ~= "INSTANCE_CHAT" or IsInGroup(LE_PARTY_CATEGORY_INSTANCE)) then
-				priority.bytes = priority.bytes - message.length
-				self.isSending = true
-				sendResult = self:MapToSendAddonMessageResult(select(-1, true, message.f(unpack(message, 1, 4))))
-				self.isSending = false
-			end
-			if self:IsRetryMessageResult(sendResult) then
-				-- Requeue the message, but don't requeue the queue.
-				queue:PushFront(message)
-				priority.bytes = priority.bytes + message.length
-				blockedQueues[#blockedQueues + 1] = { priority, queue }
-			else
-				if queue.front then -- More messages in this queue.
-					priority:PushBack(queue)
-				else -- No more messages in this queue.
-					priority.byName[queue.name] = nil
-				end
-				if message.callback then
-					local didSend = (sendResult == SendAddonMessageResult.Success)
-					xpcall(message.callback, CallErrorHandler, message.callbackArg, didSend)
-				end
-			end
-		end
-		if not priority.front then
-			self.bytes = self.bytes + priority.bytes
-			priority.bytes = 0
-		end
-	end
-	for _, blockedQueueInfo in ipairs(blockedQueues) do
-		local priority, queue = unpack(blockedQueueInfo)
-		priority:PushBack(queue)
-	end
-end
-
-function Internal:HasQueuedData()
-	for _, priority in ipairs(PRIORITIES) do
-		if self[priority].front then
-			return true;
-		end
-	end
-
-	return false;
-end
-
-function Internal:UpdateBytes()
-	local bps, burst = self.BPS, self.BURST
-	if InCombatLockdown() then
-		bps = bps * 0.50
-		burst = burst * 0.50
-	end
-
-	local now = GetTime()
-	local newBytes = (now - self.lastByteUpdate) * bps
-	local bytes = math.min(burst, self.bytes + newBytes)
-	bytes = math.max(bytes, -bps) -- Probably going to fail anyway.
-	self.bytes = bytes
-	self.lastByteUpdate = now
-
-	return bytes
-end
-
-function Internal:Enqueue(priorityName, queueName, message)
-	local priority = self[priorityName]
-	local queue = priority.byName[queueName]
-	if not queue then
-		queue = Mixin({ name = queueName }, DoublyLinkedListMixin)
-		priority.byName[queueName] = queue
-		priority:PushBack(queue)
-	end
-	queue:PushBack(message)
-	self:StartQueue()
-end
-
-Internal.bytes = 0
-Internal.lastByteUpdate = GetTime()
-Internal.BPS = BPS
-Internal.BURST = BURST
-
-for i, priority in ipairs(PRIORITIES) do
-	Internal[priority] = Mixin({ bytes = 0, byName = {} }, DoublyLinkedListMixin)
-end
-
-function Internal:StartQueue()
-	if not self.queueTicker then
-		local function OnTick()
-			self:RunQueue()
-		end
-
-		self.queueTicker = C_Timer.NewTicker(POOL_TICK, OnTick)
-	end
 end
 
 function Internal:TriggerEvent(event, ...)
@@ -488,10 +316,6 @@ local function HookSendAddonMessage(prefix, text, kind, target)
 		local filterKey = Internal.MessageFilterKeyCache[target]
 		Internal.Filter[filterKey] = GetTime() + (select(3, GetNetStats()) * 0.001) + 5.000
 	end
-	if Internal.isSending then return end
-	local prefixLength = math.min(#tostring(prefix), 16)
-	local length = math.min(#tostring(text), 255)
-	Internal.bytes = Internal.bytes - (length + prefixLength + OVERHEAD)
 end
 
 local function HookSendAddonMessageLogged(prefix, text, kind, target)
@@ -499,40 +323,6 @@ local function HookSendAddonMessageLogged(prefix, text, kind, target)
 		local filterKey = Internal.MessageFilterKeyCache[target]
 		Internal.Filter[filterKey] = GetTime() + (select(3, GetNetStats()) * 0.001) + 5.000
 	end
-	if Internal.isSending then return end
-	local prefixLength = math.min(#tostring(prefix), 16)
-	local length = math.min(#tostring(text), 255)
-	Internal.bytes = Internal.bytes - (length + prefixLength + OVERHEAD)
-end
-
-local function HookSendChatMessage(text, kind, language, target)
-	if Internal.isSending then return end
-	Internal.bytes = Internal.bytes - (#tostring(text) + OVERHEAD)
-end
-
-local function HookBNSendGameData(bnetIDGameAccount, prefix, text)
-	if Internal.isSending then return end
-	local prefixLength = math.min(#tostring(prefix), 16)
-	local length = math.min(#tostring(text), 4093 - prefixLength)
-	Internal.bytes = Internal.bytes - (length + prefixLength + OVERHEAD)
-end
-
-local function HookBNSendWhisper(bnetIDAccount, text)
-	if Internal.isSending then return end
-	local length = math.min(#tostring(text), 997)
-	Internal.bytes = Internal.bytes - (length + OVERHEAD)
-end
-
-local function HookC_ClubSendMessage(clubID, streamID, text)
-	if Internal.isSending then return end
-	local length = #tostring(text)
-	Internal.bytes = Internal.bytes - (length + OVERHEAD)
-end
-
-local function HookC_ClubEditMessage(clubID, streamID, messageID, text)
-	if Internal.isSending then return end
-	local length = #tostring(text)
-	Internal.bytes = Internal.bytes - (length + OVERHEAD)
 end
 
 --[[
@@ -649,6 +439,7 @@ end
 ]]
 
 Internal:Hide()
+Internal:RegisterEvent("ADDON_LOADED")
 Internal:RegisterEvent("CHAT_MSG_ADDON")
 Internal:RegisterEvent("CHAT_MSG_ADDON_LOGGED")
 Internal:RegisterEvent("BN_CHAT_MSG_ADDON")
@@ -660,7 +451,6 @@ Internal:RegisterEvent("BN_DISCONNECTED")
 Internal:RegisterEvent("BN_FRIEND_ACCOUNT_OFFLINE")
 Internal:RegisterEvent("BN_FRIEND_ACCOUNT_ONLINE")
 Internal:RegisterEvent("BN_FRIEND_INFO_CHANGED")
-Internal:RegisterEvent("BN_INFO_CHANGED")
 Internal:RegisterEvent("FRIENDLIST_UPDATE")
 
 Internal:SetScript("OnEvent", function(self, event, ...)
@@ -681,11 +471,6 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 		_G.__chomp_internal = nil
 		hooksecurefunc(C_ChatInfo, "SendAddonMessage", HookSendAddonMessage)
 		hooksecurefunc(C_ChatInfo, "SendAddonMessageLogged", HookSendAddonMessageLogged)
-		hooksecurefunc("SendChatMessage", HookSendChatMessage)
-		hooksecurefunc("BNSendGameData", HookBNSendGameData)
-		hooksecurefunc("BNSendWhisper", HookBNSendWhisper)
-		hooksecurefunc(C_Club, "SendMessage", HookC_ClubSendMessage)
-		hooksecurefunc(C_Club, "EditMessage", HookC_ClubEditMessage)
 		ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", MessageEventFilter_SYSTEM)
 		self.SameRealm = {}
 		self.SameRealm[(GetRealmName():gsub("[%s%-]", ""))] = true
@@ -698,12 +483,6 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 				HandleMessageIn(unpack(q, 1, 4))
 			end
 			self.IncomingQueue = nil
-		end
-		if self.OutgoingQueue then
-			for i, q in ipairs(self.OutgoingQueue) do
-				Chomp[q.f](unpack(q, 1, q.n))
-			end
-			self.OutgoingQueue = nil
 		end
 		Internal:UpdateBattleNetAccountData()
 	elseif event == "PLAYER_LEAVING_WORLD" then
@@ -719,6 +498,14 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 		end
 		self.unloadTime = nil
 		Internal:UpdateBattleNetAccountData()
+	elseif event == "ADDON_LOADED" then
+		-- Tweak CTL's conservative estimates.
+		ChatThrottleLib.MSG_OVERHEAD = math.min(27, ChatThrottleLib.MSG_OVERHEAD)
+
+		if WOW_PROJECT_ID == WOW_PROJECT_MAINLINE then
+			ChatThrottleLib.BURST = math.max(ChatThrottleLib.BURST, 8192)
+			ChatThrottleLib.MAX_CPS = math.max(ChatThrottleLib.MAX_CPS, 2048)
+		end
 	end
 end)
 
