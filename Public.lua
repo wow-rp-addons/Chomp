@@ -22,21 +22,9 @@ if not Chomp or not Internal or not Internal.LOADING then
 	return
 end
 
-local DEFAULT_PRIORITY = "MEDIUM"
+local DEFAULT_PRIORITY = "NORMAL"
 local PRIORITIES_HASH = { HIGH = true, MEDIUM = true, LOW = true }
 local PRIORITY_TO_CTL = { LOW = "BULK", MEDIUM = "NORMAL", HIGH = "ALERT" }
-local OVERHEAD = 27
-
-local function QueueMessageOut(func, ...)
-	if not Internal.OutgoingQueue then
-		Internal.OutgoingQueue = {}
-	end
-	local t = { ... }
-	t.f = func
-	t.n = select("#", ...)
-	local q = Internal.OutgoingQueue
-	q[#q + 1] = t
-end
 
 function Chomp.SendAddonMessage(prefix, text, kind, target, priority, queue, callback, callbackArg)
 	if type(prefix) ~= "string" then
@@ -61,10 +49,6 @@ function Chomp.SendAddonMessage(prefix, text, kind, target, priority, queue, cal
 	elseif #prefix > 16 then
 		error("Chomp.SendAddonMessage: prefix: length cannot exceed 16 bytes", 2)
 	end
-	if not Internal.isReady then
-		QueueMessageOut("SendAddonMessage", prefix, text, kind, target, priority, queue, callback, callbackArg)
-		return
-	end
 
 	if not kind then
 		kind = "PARTY"
@@ -74,42 +58,14 @@ function Chomp.SendAddonMessage(prefix, text, kind, target, priority, queue, cal
 	if target and kind == "WHISPER" then
 		target = Ambiguate(target, "none")
 	end
-	length = length + #prefix + OVERHEAD
 
-	if Internal.ChatThrottleLib and not ChatThrottleLib.isChomp then
-		-- CTL likes to drop RAID messages, despite the game falling back
-		-- automatically to PARTY.
-		if kind == "RAID" and not IsInRaid() then
-			kind = "PARTY"
-		end
-		ChatThrottleLib:SendAddonMessage(PRIORITY_TO_CTL[priority] or "NORMAL", prefix, text, kind, target, queue or ("%s%s%s"):format(prefix, kind, tostring(target) or ""), callback, callbackArg)
-		return
+	-- CTL likes to drop RAID messages, despite the game falling back
+	-- automatically to PARTY.
+	if kind == "RAID" and not IsInRaid() then
+		kind = "PARTY"
 	end
 
-	if not Internal.hasQueue and length <= Internal:UpdateBytes() then
-		Internal.bytes = Internal.bytes - length
-		Internal.isSending = true
-		C_ChatInfo.SendAddonMessage(prefix, text, kind, target)
-		Internal.isSending = false
-		if callback then
-			xpcall(callback, CallErrorHandler, callbackArg, true)
-		end
-		return
-	end
-
-	local message = {
-		f = C_ChatInfo.SendAddonMessage,
-		[1] = prefix,
-		[2] = text,
-		[3] = kind,
-		[4] = target,
-		kind = kind,
-		length = length,
-		callback = callback,
-		callbackArg = callbackArg,
-	}
-
-	return Internal:Enqueue(priority or DEFAULT_PRIORITY, queue or ("%s%s%s"):format(prefix, kind, (tostring(target) or "")), message)
+	ChatThrottleLib:SendAddonMessage(PRIORITY_TO_CTL[priority] or DEFAULT_PRIORITY, prefix, text, kind, target, queue, callback, callbackArg)
 end
 
 function Chomp.SendAddonMessageLogged(prefix, text, kind, target, priority, queue, callback, callbackArg)
@@ -135,10 +91,6 @@ function Chomp.SendAddonMessageLogged(prefix, text, kind, target, priority, queu
 	elseif #prefix > 16 then
 		error("Chomp.SendAddonMessageLogged: prefix: length cannot exceed 16 bytes", 2)
 	end
-	if not Internal.isReady then
-		QueueMessageOut("SendAddonMessageLogged", prefix, text, kind, target, priority, queue, callback, callbackArg)
-		return
-	end
 
 	if not kind then
 		kind = "PARTY"
@@ -148,42 +100,13 @@ function Chomp.SendAddonMessageLogged(prefix, text, kind, target, priority, queu
 	if target and kind == "WHISPER" then
 		target = Ambiguate(target, "none")
 	end
-	length = length + #prefix + OVERHEAD
 
-	if Internal.ChatThrottleLib and not ChatThrottleLib.isChomp and ChatThrottleLib.SendAddonMessageLogged then
-		-- CTL likes to drop RAID messages, despite the game falling back
-		-- automatically to PARTY.
-		if kind == "RAID" and not IsInRaid() then
-			kind = "PARTY"
-		end
-		ChatThrottleLib:SendAddonMessageLogged(PRIORITY_TO_CTL[priority] or "NORMAL", prefix, text, kind, target, queue or ("%s%s%s"):format(prefix, kind, tostring(target) or ""), callback, callbackArg)
-		return
+	-- CTL likes to drop RAID messages, despite the game falling back
+	-- automatically to PARTY.
+	if kind == "RAID" and not IsInRaid() then
+		kind = "PARTY"
 	end
-
-	if not Internal.hasQueue and length <= Internal:UpdateBytes() then
-		Internal.bytes = Internal.bytes - length
-		Internal.isSending = true
-		C_ChatInfo.SendAddonMessageLogged(prefix, text, kind, target)
-		Internal.isSending = false
-		if callback then
-			xpcall(callback, CallErrorHandler, callbackArg, true)
-		end
-		return
-	end
-
-	local message = {
-		f = C_ChatInfo.SendAddonMessageLogged,
-		[1] = prefix,
-		[2] = text,
-		[3] = kind,
-		[4] = target,
-		kind = kind,
-		length = length,
-		callback = callback,
-		callbackArg = callbackArg,
-	}
-
-	return Internal:Enqueue(priority or DEFAULT_PRIORITY, queue or ("%s%s%s"):format(prefix, kind, (tostring(target) or "")), message)
+	ChatThrottleLib:SendAddonMessageLogged(PRIORITY_TO_CTL[priority] or DEFAULT_PRIORITY, prefix, text, kind, target, queue, callback, callbackArg)
 end
 
 function Chomp.SendChatMessage(text, kind, language, target, priority, queue, callback, callbackArg)
@@ -207,10 +130,6 @@ function Chomp.SendChatMessage(text, kind, language, target, priority, queue, ca
 	if length > 255 then
 		error("Chomp.SendChatMessage: text length cannot exceed 255 bytes", 2)
 	end
-	if not Internal.isReady then
-		QueueMessageOut("SendChatMessage", text, kind, language, target, priority, queue, callback, callbackArg)
-		return
-	end
 
 	if not kind then
 		kind = "SAY"
@@ -220,42 +139,14 @@ function Chomp.SendChatMessage(text, kind, language, target, priority, queue, ca
 	if target and kind == "WHISPER" then
 		target = Ambiguate(target, "none")
 	end
-	length = length + OVERHEAD
 
-	if Internal.ChatThrottleLib and not ChatThrottleLib.isChomp then
-		-- CTL likes to drop RAID messages, despite the game falling back
-		-- automatically to PARTY.
-		if kind == "RAID" and not IsInRaid() then
-			kind = "PARTY"
-		end
-		ChatThrottleLib:SendChatMessage(PRIORITY_TO_CTL[priority] or "NORMAL", "Chomp", text, kind, language, target, queue or kind .. (target or ""), callback, callbackArg)
-		return
+	-- CTL likes to drop RAID messages, despite the game falling back
+	-- automatically to PARTY.
+	if kind == "RAID" and not IsInRaid() then
+		kind = "PARTY"
 	end
 
-	if not Internal.hasQueue and length <= Internal:UpdateBytes() then
-		Internal.bytes = Internal.bytes - length
-		Internal.isSending = true
-		SendChatMessage(text, kind, language, target)
-		Internal.isSending = false
-		if callback then
-			xpcall(callback, CallErrorHandler, callbackArg, true)
-		end
-		return
-	end
-
-	local message = {
-		f = SendChatMessage,
-		[1] = text,
-		[2] = kind,
-		[3] = language,
-		[4] = target,
-		kind = kind,
-		length = length,
-		callback = callback,
-		callbackArg = callbackArg,
-	}
-
-	return Internal:Enqueue(priority or DEFAULT_PRIORITY, queue or kind .. (target or ""), message)
+	ChatThrottleLib:SendChatMessage(PRIORITY_TO_CTL[priority] or DEFAULT_PRIORITY, "Chomp", text, kind, language, target, queue, callback, callbackArg)
 end
 
 function Chomp.BNSendGameData(bnetIDGameAccount, prefix, text, priority, queue, callback, callbackArg)
@@ -280,87 +171,12 @@ function Chomp.BNSendGameData(bnetIDGameAccount, prefix, text, priority, queue, 
 		error("Chomp.BNSendGameData: prefix: length cannot exceed 16 bytes", 2)
 	end
 
-	if not Internal.isReady then
-		QueueMessageOut("BNSendGameData", bnetIDGameAccount, prefix, text, priority, queue, callback, callbackArg)
-		return
-	end
-
-	length = length + 18 -- 16 byte prefix, 2 byte bnetIDAccount
-
-	if not Internal.hasQueue and length <= Internal:UpdateBytes() then
-		Internal.bytes = Internal.bytes - length
-		Internal.isSending = true
-		BNSendGameData(bnetIDGameAccount, prefix, text)
-		Internal.isSending = false
-		if callback then
-			xpcall(callback, CallErrorHandler, callbackArg, true)
-		end
-		return
-	end
-
-	local message = {
-		f = BNSendGameData,
-		[1] = bnetIDGameAccount,
-		[2] = prefix,
-		[3] = text,
-		length = length,
-		callback = callback,
-		callbackArg = callbackArg,
-	}
-
-	return Internal:Enqueue(priority or DEFAULT_PRIORITY, queue or ("%s%d"):format(prefix, bnetIDGameAccount), message)
-end
-
-function Chomp.BNSendWhisper(bnetIDAccount, text, priority, queue, callback, callbackArg)
-	if type(text) ~= "string" then
-		error("Chomp.BNSendWhisper: text: expected string, got " .. type(text), 2)
-	elseif type(bnetIDAccount) ~= "number" then
-		error("Chomp.BNSendWhisper: bnetIDAccount: expected number, got " .. type(bnetIDAccount), 2)
-	elseif priority and not PRIORITIES_HASH[priority] then
-		error("Chomp.BNSendWhisper: priority: expected \"HIGH\", \"MEDIUM\", \"LOW\", or nil, got " .. tostring(priority), 2)
-	elseif queue and type(queue) ~= "string" then
-		error("Chomp.BNSendWhisper: queue: expected string or nil, got " .. type(queue), 2)
-	elseif callback and type(callback) ~= "function" then
-		error("Chomp.BNSendWhisper: callback: expected function or nil, got " .. type(callback), 2)
-	end
-
-	local length = #text
-	if length > 997 then
-		error("Chomp.BNSendWhisper: text length cannot exceed 997 bytes", 2)
-	end
-
-	if not Internal.isReady then
-		QueueMessageOut("BNSendWhisper", bnetIDAccount, text, priority, queue, callback, callbackArg)
-		return
-	end
-
-	length = length + 2 -- 2 byte bnetIDAccount
-
-	if not Internal.hasQueue and length <= Internal:UpdateBytes() then
-		Internal.bytes = Internal.bytes - length
-		Internal.isSending = true
-		BNSendWhisper(bnetIDAccount, text)
-		Internal.isSending = false
-		if callback then
-			xpcall(callback, CallErrorHandler, callbackArg, true)
-		end
-		return
-	end
-
-	local message = {
-		f = BNSendWhisper,
-		[1] = bnetIDAccount,
-		[2] = text,
-		length = length,
-		callback = callback,
-		callbackArg = callbackArg,
-	}
-
-	return Internal:Enqueue(priority or DEFAULT_PRIORITY, queue or tostring(bnetIDAccount), message)
+	ChatThrottleLib:BNSendGameData(PRIORITY_TO_CTL[priority] or DEFAULT_PRIORITY, bnetIDGameAccount, prefix, text, queue, callback, callbackArg)
 end
 
 function Chomp.IsSending()
-	return Internal.isSending
+	-- v22+: Removed with no replacement.
+	return false
 end
 
 local DEFAULT_SETTINGS = {
@@ -490,11 +306,6 @@ function Chomp.SmartAddonMessage(prefix, data, kind, target, messageOptions)
 		error("Chomp.SmartAddonMessage: messageOptions.queue: expected string or nil, got " .. type(messageOptions.queue), 2)
 	end
 
-	if not Internal.isReady then
-		QueueMessageOut("SmartAddonMessage", prefix, data, kind, target, messageOptions)
-		return
-	end
-
 	local bitField = 0x000
 	local codecVersion = 2
 
@@ -550,68 +361,14 @@ function Chomp.SmartAddonMessage(prefix, data, kind, target, messageOptions)
 	return "UNLOGGED"
 end
 
-local ReportLocation = CreateFromMixins(PlayerLocationMixin)
-
 function Chomp.CheckReportGUID(prefix, guid)
-	local prefixData = Internal.Prefixes[prefix]
-	if type(prefix) ~= "string" then
-		error("Chomp.CheckReportGUID: prefix: expected string, got " .. type(prefix), 2)
-	elseif type(guid) ~= "string" then
-		error("Chomp.CheckReportGUID: guid: expected string, got " .. type(guid), 2)
-	elseif not prefixData then
-		error("Chomp.CheckReportGUID: prefix: prefix has not been registered with Chomp", 2)
-	end
-	local success, _, _, _, _, _, name, realm = pcall(GetPlayerInfoByGUID, guid)
-	if not success or not name or name == UNKNOWNOBJECT then
-		return false, "UNKNOWN"
-	end
-	local target = Chomp.NameMergedRealm(name, realm)
-	if Internal:GetBattleNetAccountID(target) then
-		return false, "BATTLENET"
-	end
-	ReportLocation:SetGUID(guid)
-	if C_ReportSystem then
-		return C_ReportSystem.CanReportPlayer(ReportLocation), "LOGGED"
-	else
-		return C_ChatInfo.CanReportPlayer(ReportLocation), "LOGGED"
-	end
+	-- v22+: Removed with no replacement.
+	return false
 end
 
 function Chomp.ReportGUID(prefix, guid, customMessage)
-	local prefixData = Internal.Prefixes[prefix]
-	if type(prefix) ~= "string" then
-		error("Chomp.ReportGUID: prefix: expected string, got " .. type(prefix), 2)
-	elseif customMessage and type(customMessage) ~= "string" then
-		error("Chomp.ReportGUID: customMessage: expected string, got " .. type(customMessage), 2)
-	elseif type(guid) ~= "string" then
-		error("Chomp.ReportGUID: guid: expected string, got " .. type(guid), 2)
-	elseif not prefixData then
-		error("Chomp.ReportGUID: prefix: prefix has not been registered with Chomp", 2)
-	end
-	local canReport, reason = Chomp.CheckReportGUID(prefix, guid)
-	if canReport then
-		if C_ReportSystem then
-			local _, _, _, _, _, name, realm = GetPlayerInfoByGUID(guid)
-			if name and realm then
-				C_ReportSystem.OpenReportPlayerDialog(PLAYER_REPORT_TYPE_LANGUAGE, name .. "-" .. realm, ReportLocation)
-			end
-		else
-			C_ChatInfo.ReportPlayer(PLAYER_REPORT_TYPE_LANGUAGE, ReportLocation, ("Report for logged addon prefix: %s. %s"):format(prefix, customMessage or "Objectionable content in logged addon messages."))
-		end
-		return true, reason
-	end
-	return false, reason
-end
-
--- TODO: Can remove this once Classic, BC, and Retail are all updated.
-local function CopyValuesAsKeys(tbl)
-	local output = {}
-
-	for k, v in ipairs(tbl) do
-		output[v] = v
-	end
-
-	return output
+	-- v22+: Removed with no replacement.
+	return false, ""
 end
 
 Chomp.Event = CopyValuesAsKeys(
@@ -684,17 +441,12 @@ end
 Chomp.UnegisterErrorCallback = Chomp.UnregisterErrorCallback
 
 function Chomp.GetBPS()
-	return Internal.BPS, Internal.BURST
+	return ChatThrottleLib.MAX_CPS, ChatThrottleLib.BURST
 end
 
 function Chomp.SetBPS(bps, burst)
-	if type(bps) ~= "number" then
-		error("Chomp.SetBPS: bps: expected number, got " .. type(bps), 2)
-	elseif type(burst) ~= "number" then
-		error("Chomp.SetBPS: burst: expected number, got " .. type(burst), 2)
-	end
-	Internal.BPS = bps
-	Internal.BURST = burst
+	ChatThrottleLib.MAX_CPS = bps
+	ChatThrottleLib.BURST = burst
 end
 
 function Chomp.GetVersion()
