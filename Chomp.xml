@@ -2,7 +2,6 @@
 	<Include file="Internal.lua"/>
 	<Include file="Public.lua"/>
 	<Include file="StringManip.lua"/>
-	<Include file="CTLCompat.lua"/>
 
 	<Script>
 		local Chomp = LibStub:GetLibrary("Chomp", true)
