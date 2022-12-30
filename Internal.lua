@@ -14,7 +14,7 @@
 	CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ]]
 
-local VERSION = 21
+local VERSION = 22
 
 if IsLoggedIn() then
 	error(("Chomp Message Library (embedded: %s) cannot be loaded after login."):format((...)))
@@ -390,14 +390,53 @@ end
 -- Hooks don't trigger if the hooked function errors, so there's no need to
 -- check parameters, if those parameters cause errors (which most don't now).
 
+local FILTER_PATTERN = ERR_CHAT_PLAYER_NOT_FOUND_S:format("(.+)");
 local lastFilteredLineID = nil
 
+if not Internal.MessageFilterKeyCache then
+	Internal.MessageFilterKeyCache = {}
+end
+
+local function GenerateMessageFilterKey(target)
+	local filterKey = target;
+	local targetName, targetRealm = string.split("-", filterKey, 2);
+
+	-- Given a WHISPER message submitted to the API with the target set to
+	-- "bob-azjol nerub", the resulting error message sent by the server will
+	-- name the target as "bob-AzjolNerub" - both case correcting and
+	-- normalizing the realm name.
+
+	if targetRealm then
+		filterKey = string.join("-", targetName, (string.gsub(targetRealm, "[%s-]", "")));
+	end
+
+	if string.utf8lower then
+		filterKey = string.utf8lower(filterKey)
+	else
+		filterKey = string.lower(filterKey)
+	end
+
+	return filterKey;
+end
+
+setmetatable(Internal.MessageFilterKeyCache, {
+	__index = function(self, target)
+		local filterKey = GenerateMessageFilterKey(target)
+		self[target] = filterKey
+		return filterKey
+	end,
+})
+
 local function MessageEventFilter_SYSTEM (self, event, text, ...)
-	local name = text:match(ERR_CHAT_PLAYER_NOT_FOUND_S:format("(.+)"))
+	local name = text:match(FILTER_PATTERN)
 	if not name then
 		return false
-	elseif not Internal.Filter[name] or Internal.Filter[name] < GetTime() then
-		Internal.Filter[name] = nil
+	end
+
+	local filterKey = Internal.MessageFilterKeyCache[name]
+
+	if not Internal.Filter[filterKey] or Internal.Filter[filterKey] < GetTime() then
+		Internal.Filter[filterKey] = nil
 		return false
 	end
 
@@ -413,7 +452,8 @@ end
 
 local function HookSendAddonMessage(prefix, text, kind, target)
 	if kind == "WHISPER" and target then
-		Internal.Filter[target] = GetTime() + (select(3, GetNetStats()) * 0.001) + 5.000
+		local filterKey = Internal.MessageFilterKeyCache[target]
+		Internal.Filter[filterKey] = GetTime() + (select(3, GetNetStats()) * 0.001) + 5.000
 	end
 	if Internal.isSending then return end
 	local prefixLength = math.min(#tostring(prefix), 16)
@@ -423,7 +463,8 @@ end
 
 local function HookSendAddonMessageLogged(prefix, text, kind, target)
 	if kind == "WHISPER" and target then
-		Internal.Filter[target] = GetTime() + (select(3, GetNetStats()) * 0.001) + 5.000
+		local filterKey = Internal.MessageFilterKeyCache[target]
+		Internal.Filter[filterKey] = GetTime() + (select(3, GetNetStats()) * 0.001) + 5.000
 	end
 	if Internal.isSending then return end
 	local prefixLength = math.min(#tostring(prefix), 16)
@@ -672,12 +713,13 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 	elseif event == "PLAYER_LEAVING_WORLD" then
 		self.unloadTime = GetTime()
 	elseif event == "PLAYER_ENTERING_WORLD" and self.unloadTime then
+		self.MessageFilterKeyCache = {}
 		local loadTime = GetTime() - self.unloadTime
-		for name, filterTime in pairs(self.Filter) do
+		for filterKey, filterTime in pairs(self.Filter) do
 			if filterTime >= self.unloadTime then
-				self.Filter[name] = filterTime + loadTime
+				self.Filter[filterKey] = filterTime + loadTime
 			else
-				self.Filter[name] = nil
+				self.Filter[filterKey] = nil
 			end
 		end
 		self.unloadTime = nil
