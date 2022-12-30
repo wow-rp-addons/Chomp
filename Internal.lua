@@ -157,7 +157,7 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 	if not hasVersion16 then
 		-- Sender is using a version of Chomp that's far too old. Ignore
 		-- as we probably can't communicate with them anyway.
-		return;
+		return
 	end
 
 	if not prefixData[sender] then
@@ -390,7 +390,7 @@ end
 -- Hooks don't trigger if the hooked function errors, so there's no need to
 -- check parameters, if those parameters cause errors (which most don't now).
 
-local FILTER_PATTERN = ERR_CHAT_PLAYER_NOT_FOUND_S:format("(.+)");
+local FILTER_PATTERN = ERR_CHAT_PLAYER_NOT_FOUND_S:format("(.+)")
 local lastFilteredLineID = nil
 
 if not Internal.MessageFilterKeyCache then
@@ -398,8 +398,8 @@ if not Internal.MessageFilterKeyCache then
 end
 
 local function GenerateMessageFilterKey(target)
-	local filterKey = target;
-	local targetName, targetRealm = string.split("-", filterKey, 2);
+	local filterKey = target
+	local targetName, targetRealm = string.split("-", filterKey, 2)
 
 	-- Given a WHISPER message submitted to the API with the target set to
 	-- "bob-azjol nerub", the resulting error message sent by the server will
@@ -407,7 +407,7 @@ local function GenerateMessageFilterKey(target)
 	-- normalizing the realm name.
 
 	if targetRealm then
-		filterKey = string.join("-", targetName, (string.gsub(targetRealm, "[%s-]", "")));
+		filterKey = string.join("-", targetName, (string.gsub(targetRealm, "[%s-]", "")))
 	end
 
 	if string.utf8lower then
@@ -416,7 +416,7 @@ local function GenerateMessageFilterKey(target)
 		filterKey = string.lower(filterKey)
 	end
 
-	return filterKey;
+	return filterKey
 end
 
 setmetatable(Internal.MessageFilterKeyCache, {
