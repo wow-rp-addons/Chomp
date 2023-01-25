@@ -713,7 +713,6 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 	elseif event == "PLAYER_LEAVING_WORLD" then
 		self.unloadTime = GetTime()
 	elseif event == "PLAYER_ENTERING_WORLD" and self.unloadTime then
-		self.MessageFilterKeyCache = {}
 		local loadTime = GetTime() - self.unloadTime
 		for filterKey, filterTime in pairs(self.Filter) do
 			if filterTime >= self.unloadTime then
