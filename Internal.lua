@@ -398,17 +398,11 @@ if not Internal.MessageFilterKeyCache then
 end
 
 local function GenerateMessageFilterKey(target)
-	local filterKey = target
-	local targetName, targetRealm = string.split("-", filterKey, 2)
+	-- Due to systemic issues across ourselves, LibMSP, TRP, etc. this
+	-- filter has been hacked to only use the character name of the player
+	-- and to discard the realm.
 
-	-- Given a WHISPER message submitted to the API with the target set to
-	-- "bob-azjol nerub", the resulting error message sent by the server will
-	-- name the target as "bob-AzjolNerub" - both case correcting and
-	-- normalizing the realm name.
-
-	if targetRealm then
-		filterKey = string.join("-", targetName, (string.gsub(targetRealm, "[%s-]", "")))
-	end
+	local filterKey = string.split("-", target, 2)
 
 	if string.utf8lower then
 		filterKey = string.utf8lower(filterKey)
@@ -453,6 +447,7 @@ end
 local function HookSendAddonMessage(prefix, text, kind, target)
 	if kind == "WHISPER" and target then
 		local filterKey = Internal.MessageFilterKeyCache[target]
+		print("Send with fk", filterKey)
 		Internal.Filter[filterKey] = GetTime() + (select(3, GetNetStats()) * 0.001) + 5.000
 	end
 	if Internal.isSending then return end
