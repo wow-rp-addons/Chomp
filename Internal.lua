@@ -447,7 +447,6 @@ end
 local function HookSendAddonMessage(prefix, text, kind, target)
 	if kind == "WHISPER" and target then
 		local filterKey = Internal.MessageFilterKeyCache[target]
-		print("Send with fk", filterKey)
 		Internal.Filter[filterKey] = GetTime() + (select(3, GetNetStats()) * 0.001) + 5.000
 	end
 	if Internal.isSending then return end
