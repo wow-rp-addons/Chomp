@@ -14,7 +14,7 @@
 	CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ]]
 
-local VERSION = 23
+local VERSION = 24
 
 if IsLoggedIn() then
 	error(("Chomp Message Library (embedded: %s) cannot be loaded after login."):format((...)))
@@ -398,17 +398,11 @@ if not Internal.MessageFilterKeyCache then
 end
 
 local function GenerateMessageFilterKey(target)
-	local filterKey = target
-	local targetName, targetRealm = string.split("-", filterKey, 2)
+	-- Due to systemic issues across ourselves, LibMSP, TRP, etc. this
+	-- filter has been hacked to only use the character name of the player
+	-- and to discard the realm.
 
-	-- Given a WHISPER message submitted to the API with the target set to
-	-- "bob-azjol nerub", the resulting error message sent by the server will
-	-- name the target as "bob-AzjolNerub" - both case correcting and
-	-- normalizing the realm name.
-
-	if targetRealm then
-		filterKey = string.join("-", targetName, (string.gsub(targetRealm, "[%s-]", "")))
-	end
+	local filterKey = string.split("-", target, 2)
 
 	if string.utf8lower then
 		filterKey = string.utf8lower(filterKey)
