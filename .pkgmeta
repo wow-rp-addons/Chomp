@@ -12,7 +12,3 @@ ignore:
   - Libs/*/tests
   - .gitkeep
   - Makefile
-
-manual-changelog:
-  filename: CHANGELOG.md
-  markup-type: markdown
