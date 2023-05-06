@@ -18,11 +18,11 @@ jobs:
           annotate: warning
 
       - name: Create Package
-        uses: BigWigsMods/packager@v2
+        uses: BigWigsMods/packager@master
         with:
           args: -d -z -S
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: Chomp-PR-${{ github.event.number }}
           path: .release/
