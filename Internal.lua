@@ -573,6 +573,8 @@ local function CanExchangeWithGameAccount(account)
 		return false  -- Friend isn't even online.
 	elseif account.clientProgram ~= BNET_CLIENT_WOW then
 		return false  -- Friend isn't playing WoW. Imagine.
+	elseif not account.isInCurrentRegion then
+		return false
 	end
 
 	local characterName = account.characterName
