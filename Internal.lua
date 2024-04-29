@@ -333,7 +333,7 @@ function Internal:RunQueue()
 			if (message.kind ~= "RAID" and message.kind ~= "PARTY" or IsInGroup(LE_PARTY_CATEGORY_HOME)) and (message.kind ~= "INSTANCE_CHAT" or IsInGroup(LE_PARTY_CATEGORY_INSTANCE)) then
 				priority.bytes = priority.bytes - message.length
 				self.isSending = true
-				sendResult = self:MapToSendAddonMessageResult(select(-1, message.f(unpack(message, 1, 4))))
+				sendResult = self:MapToSendAddonMessageResult(select(-1, true, message.f(unpack(message, 1, 4))))
 				self.isSending = false
 			end
 			if self:IsRetryMessageResult(sendResult) then
