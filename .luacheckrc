@@ -51,6 +51,7 @@ read_globals = {
 	"CreateFrame",
 	"CreateFromMixins",
 	"DoublyLinkedListMixin",
+	"Enum.SendAddonMessageResult",
 	"ERR_CHAT_PLAYER_NOT_FOUND_S",
 	"FULL_PLAYER_NAME",
 	"GetAutoCompleteRealms",
