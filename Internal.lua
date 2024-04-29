@@ -359,8 +359,7 @@ function Internal:RunQueue()
 		end
 	end
 	for _, blockedQueueInfo in ipairs(blockedQueues) do
-		local priority = blockedQueueInfo.priority
-		local queue = blockedQueueInfo.queue
+		local priority, queue = unpack(blockedQueueInfo)
 		priority:PushBack(queue)
 	end
 end
