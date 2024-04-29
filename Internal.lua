@@ -14,7 +14,7 @@
 	CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ]]
 
-local VERSION = 24
+local VERSION = 25
 
 if IsLoggedIn() then
 	error(("Chomp Message Library (embedded: %s) cannot be loaded after login."):format((...)))
@@ -278,49 +278,100 @@ end
 	INTERNAL BANDWIDTH POOL
 ]]
 
+local SendAddonMessageResult = Mixin({
+    Success = 0,
+    InvalidPrefix = 1,
+    InvalidMessage = 2,
+    AddonMessageThrottle = 3,
+    InvalidChatType = 4,
+    NotInGroup = 5,
+    TargetRequired = 6,
+    InvalidChannel = 7,
+    ChannelThrottle = 8,
+    GeneralError = 9,  -- Reporting for duty, sir!
+}, Enum.SendAddonMessageResult or {})
+
+function Internal:MapToSendAddonMessageResult(result)
+	if result == true then
+		result = SendAddonMessageResult.Success
+	elseif result == false then
+		result = SendAddonMessageResult.GeneralError
+	end
+
+	return result
+end
+
+function Internal:IsRetryMessageResult(result)
+	if result == SendAddonMessageResult.AddonMessageThrottle then
+		return true
+	elseif result == SendAddonMessageResult.ChannelThrottle then
+		return true
+	else
+		return false
+	end
+end
+
 function Internal:RunQueue()
 	if self:UpdateBytes() <= 0 then
 		return
 	end
 	local active = {}
+	local blockedQueues = {}
 	for i, priority in ipairs(PRIORITIES) do
 		if self[priority].front then -- Priority has queues.
 			active[#active + 1] = self[priority]
 		end
 	end
-	local remaining = #active
-	local bytes = self.bytes / remaining
+	local bytes = (#active > 0 and self.bytes / #active or 0)
 	self.bytes = 0
 	for i, priority in ipairs(active) do
 		priority.bytes = priority.bytes + bytes
 		while priority.front and priority.bytes >= priority.front.front.length do
 			local queue = priority:PopFront()
 			local message = queue:PopFront()
-			if queue.front then -- More messages in this queue.
-				priority:PushBack(queue)
-			else -- No more messages in this queue.
-				priority.byName[queue.name] = nil
-			end
-			local didSend = false
+			local sendResult = SendAddonMessageResult.GeneralError
 			if (message.kind ~= "RAID" and message.kind ~= "PARTY" or IsInGroup(LE_PARTY_CATEGORY_HOME)) and (message.kind ~= "INSTANCE_CHAT" or IsInGroup(LE_PARTY_CATEGORY_INSTANCE)) then
 				priority.bytes = priority.bytes - message.length
 				self.isSending = true
-				didSend = message.f(unpack(message, 1, 4)) ~= false
+				sendResult = self:MapToSendAddonMessageResult(select(-1, true, message.f(unpack(message, 1, 4))))
 				self.isSending = false
 			end
-			if message.callback then
-				xpcall(message.callback, CallErrorHandler, message.callbackArg, didSend)
+			if self:IsRetryMessageResult(sendResult) then
+				-- Requeue the message, but don't requeue the queue.
+				queue:PushFront(message)
+				priority.bytes = priority.bytes + message.length
+				blockedQueues[#blockedQueues + 1] = { priority, queue }
+			else
+				if queue.front then -- More messages in this queue.
+					priority:PushBack(queue)
+				else -- No more messages in this queue.
+					priority.byName[queue.name] = nil
+				end
+				if message.callback then
+					local didSend = (sendResult == SendAddonMessageResult.Success)
+					xpcall(message.callback, CallErrorHandler, message.callbackArg, didSend)
+				end
 			end
 		end
 		if not priority.front then
-			remaining = remaining - 1
 			self.bytes = self.bytes + priority.bytes
 			priority.bytes = 0
 		end
 	end
-	if remaining == 0 then
-		self.hasQueue = nil
+	for _, blockedQueueInfo in ipairs(blockedQueues) do
+		local priority, queue = unpack(blockedQueueInfo)
+		priority:PushBack(queue)
 	end
+end
+
+function Internal:HasQueuedData()
+	for _, priority in ipairs(PRIORITIES) do
+		if self[priority].front then
+			return true;
+		end
+	end
+
+	return false;
 end
 
 function Internal:UpdateBytes()
@@ -362,20 +413,12 @@ for i, priority in ipairs(PRIORITIES) do
 end
 
 function Internal:StartQueue()
-	if not self.hasQueue then
-		self.hasQueue = true
-		C_Timer.After(POOL_TICK, self.OnTick)
-	end
-end
+	if not self.queueTicker then
+		local function OnTick()
+			self:RunQueue()
+		end
 
-function Internal.OnTick()
-	local self = Internal
-	if not self.hasQueue then
-		return
-	end
-	self:RunQueue()
-	if self.hasQueue then
-		C_Timer.After(POOL_TICK, self.OnTick)
+		self.queueTicker = C_Timer.NewTicker(POOL_TICK, OnTick)
 	end
 end
 
