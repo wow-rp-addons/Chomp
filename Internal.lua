@@ -301,7 +301,7 @@ local function MapToSendAddonMessageResult(result)
 	return result
 end
 
-local function IsRecoverableDeliveryError(result)
+local function ShouldRetryTransmission(result)
 	if result == SendAddonMessageResult.AddonMessageThrottle then
 		return true
 	elseif result == SendAddonMessageResult.ChannelThrottle then
@@ -337,7 +337,7 @@ function Internal:RunQueue()
 				sendResult = MapToSendAddonMessageResult(select(-1, message.f(unpack(message, 1, 4))))
 				self.isSending = false
 			end
-			if IsRecoverableDeliveryError(sendResult) then
+			if ShouldRetryTransmission(sendResult) then
 				-- Requeue the message, but don't requeue the queue.
 				queue:PushFront(message)
 				priority.bytes = priority.bytes + message.length
