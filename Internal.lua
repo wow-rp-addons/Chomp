@@ -322,7 +322,7 @@ function Internal:RunQueue()
 			active[#active + 1] = self[priority]
 		end
 	end
-	local bytes = self.bytes / #active
+	local bytes = (#active > 0 and self.bytes / #active or 0)
 	self.bytes = 0
 	for i, priority in ipairs(active) do
 		priority.bytes = priority.bytes + bytes
