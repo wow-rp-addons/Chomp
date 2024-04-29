@@ -322,8 +322,7 @@ function Internal:RunQueue()
 			active[#active + 1] = self[priority]
 		end
 	end
-	local remaining = #active
-	local bytes = self.bytes / remaining
+	local bytes = self.bytes / #active
 	self.bytes = 0
 	for i, priority in ipairs(active) do
 		priority.bytes = priority.bytes + bytes
@@ -355,7 +354,6 @@ function Internal:RunQueue()
 			end
 		end
 		if not priority.front then
-			remaining = remaining - 1
 			self.bytes = self.bytes + priority.bytes
 			priority.bytes = 0
 		end
@@ -365,6 +363,16 @@ function Internal:RunQueue()
 		local queue = blockedQueueInfo.queue
 		priority:PushBack(queue)
 	end
+end
+
+function Internal:HasQueuedData()
+	for _, priority in ipairs(PRIORITIES) do
+		if self[priority].front then
+			return true;
+		end
+	end
+
+	return false;
 end
 
 function Internal:UpdateBytes()

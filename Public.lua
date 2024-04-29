@@ -86,7 +86,7 @@ function Chomp.SendAddonMessage(prefix, text, kind, target, priority, queue, cal
 		return
 	end
 
-	if not Internal.hasQueue and length <= Internal:UpdateBytes() then
+	if not Internal:HasQueuedData() and length <= Internal:UpdateBytes() then
 		Internal.bytes = Internal.bytes - length
 		Internal.isSending = true
 		C_ChatInfo.SendAddonMessage(prefix, text, kind, target)
@@ -160,7 +160,7 @@ function Chomp.SendAddonMessageLogged(prefix, text, kind, target, priority, queu
 		return
 	end
 
-	if not Internal.hasQueue and length <= Internal:UpdateBytes() then
+	if not Internal:HasQueuedData() and length <= Internal:UpdateBytes() then
 		Internal.bytes = Internal.bytes - length
 		Internal.isSending = true
 		C_ChatInfo.SendAddonMessageLogged(prefix, text, kind, target)
@@ -232,7 +232,7 @@ function Chomp.SendChatMessage(text, kind, language, target, priority, queue, ca
 		return
 	end
 
-	if not Internal.hasQueue and length <= Internal:UpdateBytes() then
+	if not Internal:HasQueuedData() and length <= Internal:UpdateBytes() then
 		Internal.bytes = Internal.bytes - length
 		Internal.isSending = true
 		SendChatMessage(text, kind, language, target)
@@ -287,7 +287,7 @@ function Chomp.BNSendGameData(bnetIDGameAccount, prefix, text, priority, queue, 
 
 	length = length + 18 -- 16 byte prefix, 2 byte bnetIDAccount
 
-	if not Internal.hasQueue and length <= Internal:UpdateBytes() then
+	if not Internal:HasQueuedData() and length <= Internal:UpdateBytes() then
 		Internal.bytes = Internal.bytes - length
 		Internal.isSending = true
 		BNSendGameData(bnetIDGameAccount, prefix, text)
@@ -336,7 +336,7 @@ function Chomp.BNSendWhisper(bnetIDAccount, text, priority, queue, callback, cal
 
 	length = length + 2 -- 2 byte bnetIDAccount
 
-	if not Internal.hasQueue and length <= Internal:UpdateBytes() then
+	if not Internal:HasQueuedData() and length <= Internal:UpdateBytes() then
 		Internal.bytes = Internal.bytes - length
 		Internal.isSending = true
 		BNSendWhisper(bnetIDAccount, text)
