@@ -500,45 +500,6 @@ end
 	BATTLE.NET WRAPPER API
 ]]
 
-local function PackGameAccountInfo(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14, arg15, arg16, arg17, arg18, arg19, arg20, arg21, arg22)
-	return {
-		hasFocus       = arg1 ~= 0 and arg or nil,
-		characterName  = arg2 ~= "" and arg or nil,
-		clientProgram  = arg3,
-		realmName      = arg4 ~= "" and arg or nil,
-		realmID        = arg5 ~= 0 and arg or nil,
-		factionName    = arg6 ~= "" and arg or nil,
-		raceName       = arg7 ~= "" and arg or nil,
-		className      = arg8 ~= "" and arg or nil,
-		areaName       = arg10 ~= "" and arg or nil,
-		characterLevel = arg11 ~= "" and arg or nil,
-		richPresence   = arg12 ~= "" and arg or nil,
-		isOnline       = arg15,
-		gameAccountID  = arg16 ~= 0 and arg or nil,
-		isGameAFK      = arg18,
-		isGameBusy     = arg19,
-		playerGuid     = arg20 ~= 0 and arg or nil,
-		wowProjectID   = arg21 ~= 0 and arg or nil,
-		isWowMobile    = arg22,
-	}
-end
-
-local function GetFriendNumGameAccounts(friendIndex)
-	if C_BattleNet then
-		return C_BattleNet.GetFriendNumGameAccounts(friendIndex)
-	else
-		return BNGetNumFriendGameAccounts(friendIndex)
-	end
-end
-
-local function GetFriendGameAccountInfo(friendIndex, accountIndex)
-	if C_BattleNet then
-		return C_BattleNet.GetFriendGameAccountInfo(friendIndex, accountIndex)
-	else
-		return PackGameAccountInfo(BNGetFriendGameAccountInfo(friendIndex, accountIndex))
-	end
-end
-
 local function EnumerateFriendGameAccounts()
 	local friendIndex  = 0
 	local friendCount  = BNGetNumFriends()
@@ -552,12 +513,12 @@ local function EnumerateFriendGameAccounts()
 			if accountIndex > accountCount then
 				friendIndex  = friendIndex + 1
 				accountIndex = 1
-				accountCount = GetFriendNumGameAccounts(friendIndex)
+				accountCount = C_BattleNet.GetFriendNumGameAccounts(friendIndex)
 			end
 		until accountIndex <= accountCount or friendIndex > friendCount
 
 		if friendIndex <= friendCount and accountIndex <= accountCount then
-			return friendIndex, accountIndex, GetFriendGameAccountInfo(friendIndex, accountIndex)
+			return friendIndex, accountIndex, C_BattleNet.GetFriendGameAccountInfo(friendIndex, accountIndex)
 		end
 	end
 
