@@ -46,6 +46,7 @@ read_globals = {
 	"C_ReportSystem.CanReportPlayer",
 	"C_ReportSystem.OpenReportPlayerDialog",
 	"C_Timer.After",
+	"C_Timer.NewTicker",
 	"CallErrorHandler",
 	"ChatFrame_AddMessageEventFilter",
 	"CreateFrame",
