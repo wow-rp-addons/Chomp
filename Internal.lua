@@ -291,7 +291,7 @@ local SendAddonMessageResult = Mixin({
     GeneralError = 9,  -- Reporting for duty, sir!
 }, Enum.SendAddonMessageResult or {})
 
-local function MapToSendAddonMessageResult(result)
+function Internal:MapToSendAddonMessageResult(result)
 	if result == true then
 		result = SendAddonMessageResult.Success
 	elseif result == false then
@@ -301,7 +301,7 @@ local function MapToSendAddonMessageResult(result)
 	return result
 end
 
-local function ShouldRetryTransmission(result)
+function Internal:IsRetryMessageResult(result)
 	if result == SendAddonMessageResult.AddonMessageThrottle then
 		return true
 	elseif result == SendAddonMessageResult.ChannelThrottle then
@@ -333,10 +333,10 @@ function Internal:RunQueue()
 			if (message.kind ~= "RAID" and message.kind ~= "PARTY" or IsInGroup(LE_PARTY_CATEGORY_HOME)) and (message.kind ~= "INSTANCE_CHAT" or IsInGroup(LE_PARTY_CATEGORY_INSTANCE)) then
 				priority.bytes = priority.bytes - message.length
 				self.isSending = true
-				sendResult = MapToSendAddonMessageResult(select(-1, message.f(unpack(message, 1, 4))))
+				sendResult = self:MapToSendAddonMessageResult(select(-1, message.f(unpack(message, 1, 4))))
 				self.isSending = false
 			end
-			if ShouldRetryTransmission(sendResult) then
+			if self:IsRetryMessageResult(sendResult) then
 				-- Requeue the message, but don't requeue the queue.
 				queue:PushFront(message)
 				priority.bytes = priority.bytes + message.length
