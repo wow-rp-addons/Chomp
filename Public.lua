@@ -89,7 +89,7 @@ function Chomp.SendAddonMessage(prefix, text, kind, target, priority, queue, cal
 	if not Internal:HasQueuedData() and length <= Internal:UpdateBytes() then
 		Internal.bytes = Internal.bytes - length
 		Internal.isSending = true
-		local sendResult = select(-1, C_ChatInfo.SendAddonMessage(prefix, text, kind, target))
+		local sendResult = select(-1, true, C_ChatInfo.SendAddonMessage(prefix, text, kind, target))
 		sendResult = Internal:MapToSendAddonMessageResult(sendResult)
 		Internal.isSending = false
 		if not Internal:IsRetryMessageResult(sendResult) then
@@ -166,7 +166,7 @@ function Chomp.SendAddonMessageLogged(prefix, text, kind, target, priority, queu
 	if not Internal:HasQueuedData() and length <= Internal:UpdateBytes() then
 		Internal.bytes = Internal.bytes - length
 		Internal.isSending = true
-		local sendResult = select(-1, C_ChatInfo.SendAddonMessageLogged(prefix, text, kind, target))
+		local sendResult = select(-1, true, C_ChatInfo.SendAddonMessageLogged(prefix, text, kind, target))
 		sendResult = Internal:MapToSendAddonMessageResult(sendResult)
 		Internal.isSending = false
 		if not Internal:IsRetryMessageResult(sendResult) then
