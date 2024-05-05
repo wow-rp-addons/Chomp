@@ -138,10 +138,9 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 		text = userText
 	end
 
-	local codecVersion = Internal:GetCodecVersionFromBitfield(bitField)
 	local method = channel:match("%:(%u+)$")
 	if method == "BATTLENET" or method == "LOGGED" then
-		text = Internal.DecodeQuotedPrintable(text, method == "LOGGED", codecVersion)
+		text = Internal.DecodeQuotedPrintable(text, method == "LOGGED")
 	end
 
 	if bit.bor(bitField, Internal.KNOWN_BITS) ~= Internal.KNOWN_BITS or bit.band(bitField, Internal.BITS.DEPRECATE) == Internal.BITS.DEPRECATE then
@@ -154,7 +153,8 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 	end
 
 	local hasVersion16 = bit.band(bitField, Internal.BITS.VERSION16) ~= 0
-	if not hasVersion16 then
+	local hasCodecV2 = bit.band(bitField, Internal.BITS.CODECV2) ~= 0
+	if not hasVersion16 or not hasCodecV2 then
 		-- Sender is using a version of Chomp that's far too old. Ignore
 		-- as we probably can't communicate with them anyway.
 		return
@@ -268,10 +268,6 @@ local function ParseBattleNetMessage(prefix, text, kind, bnetIDGameAccount)
 	end
 
 	return prefix, text, ("%s:BATTLENET"):format(kind), name, Chomp.NameMergedRealm(UnitName("player")), 0, 0, "", 0
-end
-
-function Internal:GetCodecVersionFromBitfield(bitField)
-	return (bit.band(bitField, Internal.BITS.CODECV2) ~= 0) and 2 or 1
 end
 
 --[[

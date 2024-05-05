@@ -433,11 +433,10 @@ local function SplitAndSend(sendFunc, maxSize, bitField, prefix, text, ...)
 	local sessionID = nextSessionID
 	nextSessionID = (nextSessionID + 1) % 4096
 	local position = 1
-	local codecVersion = Internal:GetCodecVersionFromBitfield(bitField)
 	while position <= textLen do
 		-- Only *need* to do a safe substring for encoded channels, but doing so
 		-- always shouldn't hurt.
-		local msgText, offset = Chomp.SafeSubString(text, position, position + maxSize - 1, textLen, codecVersion)
+		local msgText, offset = Chomp.SafeSubString(text, position, position + maxSize - 1, textLen)
 		if offset > 0 then
 			-- Update total offset and total message number if needed.
 			totalOffset = totalOffset + offset
@@ -502,7 +501,6 @@ function Chomp.SmartAddonMessage(prefix, data, kind, target, messageOptions)
 	end
 
 	local bitField = 0x000
-	local codecVersion = 2
 
 	-- v20+: Always set the CODECV2 bit. All clients on the network at this
 	--       point should support it. Setting this bit unconditionally will
@@ -531,7 +529,7 @@ function Chomp.SmartAddonMessage(prefix, data, kind, target, messageOptions)
 		-- crossrealm targets.
 		local bnetIDGameAccount = Internal:GetBattleNetAccountID(target)
 		if bnetIDGameAccount then
-			ToBattleNet(bitField, prefix, Internal.EncodeQuotedPrintable(data, false, codecVersion), kind, bnetIDGameAccount, messageOptions.priority, messageOptions.queue or queue)
+			ToBattleNet(bitField, prefix, Internal.EncodeQuotedPrintable(data, false), kind, bnetIDGameAccount, messageOptions.priority, messageOptions.queue or queue)
 			return "BATTLENET"
 		end
 		local targetUnit = Ambiguate(target, "none")
@@ -549,7 +547,7 @@ function Chomp.SmartAddonMessage(prefix, data, kind, target, messageOptions)
 		end
 	end
 	if not messageOptions.binaryBlob then
-		ToInGameLogged(bitField, prefix, Internal.EncodeQuotedPrintable(data, true, codecVersion), kind, target, messageOptions.priority, messageOptions.queue or queue)
+		ToInGameLogged(bitField, prefix, Internal.EncodeQuotedPrintable(data, true), kind, target, messageOptions.priority, messageOptions.queue or queue)
 		return "LOGGED"
 	end
 	ToInGame(bitField, prefix, data, kind, target, messageOptions.priority, messageOptions.queue or queue)
@@ -607,17 +605,6 @@ function Chomp.ReportGUID(prefix, guid, customMessage)
 		return true, reason
 	end
 	return false, reason
-end
-
--- TODO: Can remove this once Classic, BC, and Retail are all updated.
-local function CopyValuesAsKeys(tbl)
-	local output = {}
-
-	for k, v in ipairs(tbl) do
-		output[v] = v
-	end
-
-	return output
 end
 
 Chomp.Event = CopyValuesAsKeys(
