@@ -162,7 +162,7 @@ function Chomp.BNSendGameData(bnetIDGameAccount, prefix, text, priority, queue, 
 end
 
 function Chomp.IsSending()
-	-- v22+: Removed with no replacement.
+	-- v26+: Removed with no replacement.
 	return false
 end
 
@@ -342,12 +342,12 @@ function Chomp.SmartAddonMessage(prefix, data, kind, target, messageOptions)
 end
 
 function Chomp.CheckReportGUID(prefix, guid)
-	-- v22+: Removed with no replacement.
+	-- v26+: Removed with no replacement.
 	return false
 end
 
 function Chomp.ReportGUID(prefix, guid, customMessage)
-	-- v22+: Removed with no replacement.
+	-- v26+: Removed with no replacement.
 	return false, ""
 end
 
