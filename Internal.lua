@@ -640,13 +640,21 @@ end
 function Internal:GetBattleNetAccountName(senderAccountID)
 	if not BNFeaturesEnabledAndConnected() then
 		return nil  -- Player isn't connected to Battle.net.
-	elseif not self.bnetGameAccounts then
-		return nil  -- We have no game accounts to search.
 	end
 
-	for playerName, gameAccountID in pairs(self.bnetGameAccounts) do
-		if gameAccountID == senderAccountID then
-			return playerName
+	if self.bnetGameAccounts then
+		for playerName, gameAccountID in pairs(self.bnetGameAccounts) do
+			if gameAccountID == senderAccountID then
+				return playerName
+			end
+		end
+	end
+
+	if self.bnetGameTags then
+		for battleTag, gameAccountID in pairs(self.bnetGameTags) do
+			if gameAccountID == senderAccountID then
+				return battleTag
+			end
 		end
 	end
 
