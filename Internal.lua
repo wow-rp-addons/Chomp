@@ -557,7 +557,7 @@ local function EnumerateFriendGameAccounts()
 		until accountIndex <= accountCount or friendIndex > friendCount
 
 		if friendIndex <= friendCount and accountIndex <= accountCount then
-			return friendIndex, accountIndex, C_BattleNet.GetFriendGameAccountInfo(friendIndex, accountIndex)
+			return friendIndex, accountIndex
 		end
 	end
 
@@ -568,32 +568,46 @@ local function NormalizeRealmName(realmName)
 	return (string.gsub(realmName, "[%s-]", ""))
 end
 
-local function CanExchangeWithGameAccount(account)
-	if not account.isOnline then
-		return false  -- Friend isn't even online.
-	elseif account.clientProgram ~= BNET_CLIENT_WOW then
-		return false  -- Friend isn't playing WoW. Imagine.
-	elseif not account.isInCurrentRegion then
-		return false
+local ExchangeCapabilityFlag = {
+	None = 0,
+	NameRealm = 1,
+	BattleTag = 2,
+	All = 3,
+}
+
+local function CanExchangeWithBNetAccount(accountInfo, gameAccountInfo)
+	local result = ExchangeCapabilityFlag.All
+
+	if not gameAccountInfo.isOnline then
+		result = ExchangeCapabilityFlag.None  -- Friend isn't even online.
+	elseif not gameAccountInfo.isInCurrentRegion then
+		result = ExchangeCapabilityFlag.None  -- Friend is from another planet.
+	elseif gameAccountInfo.clientProgram ~= BNET_CLIENT_WOW then
+		result = ExchangeCapabilityFlag.None  -- Friend isn't playing WoW. Imagine.
 	end
 
-	local characterName = account.characterName
-	local realmName     = account.realmName and NormalizeRealmName(account.realmName) or nil
-	local factionName   = account.factionName
+	local characterName = gameAccountInfo.characterName
+	local realmName = gameAccountInfo.realmName and NormalizeRealmName(gameAccountInfo.realmName) or nil
+	local factionName = gameAccountInfo.factionName
 
 	if not characterName or characterName == "" or characterName == UNKNOWNOBJECT then
-		return false  -- Character name is invalid.
+		result = bit.band(result, bit.bnot(ExchangeCapabilityFlag.NameRealm))  -- Character name is invalid.
 	elseif not realmName or realmName == "" then
-		return false  -- Realm name is invalid.
+		result = bit.band(result, bit.bnot(ExchangeCapabilityFlag.NameRealm))  -- Realm name is invalid.
 	elseif Internal.SameRealm[realmName] and factionName == UnitFactionGroup("player") then
-		return false  -- This character is on the same faction and realm.
-	else
-		return true
+		result = bit.band(result, bit.bnot(ExchangeCapabilityFlag.NameRealm))  -- This character is on the same faction and realm.
 	end
+
+	if not accountInfo.battleTag or accountInfo.battleTag == "" then
+		result = bit.band(result, bit.bnot(ExchangeCapabilityFlag.BattleTag))  -- Battle tag is invalid
+	end
+
+	return result
 end
 
 function Internal:UpdateBattleNetAccountData()
 	self.bnetGameAccounts = {}
+	self.bnetGameTags = {}
 
 	if not BNFeaturesEnabledAndConnected() then
 		return  -- Player isn't connected to Battle.net.
@@ -601,13 +615,24 @@ function Internal:UpdateBattleNetAccountData()
 		return  -- Player hasn't yet logged in.
 	end
 
-	for _, _, account in EnumerateFriendGameAccounts() do
-		if CanExchangeWithGameAccount(account) then
-			local characterName = account.characterName
-			local realmName = string.gsub(account.realmName, "[%s*%-*]", "")
+	for friendIndex, accountIndex in EnumerateFriendGameAccounts() do
+		local accountInfo = C_BattleNet.GetFriendAccountInfo(friendIndex)
+		local gameAccountInfo = C_BattleNet.GetFriendGameAccountInfo(friendIndex, accountIndex)
+		local gameAccountID = gameAccountInfo.gameAccountID
+
+		local result = CanExchangeWithBNetAccount(accountInfo, gameAccountInfo)
+
+		if bit.band(result, ExchangeCapabilityFlag.NameRealm) ~= 0 then
+			local characterName = gameAccountInfo.characterName
+			local realmName = string.gsub(gameAccountInfo.realmName, "[%s*%-*]", "")
 			local mergedName = Chomp.NameMergedRealm(characterName, realmName)
 
-			self.bnetGameAccounts[mergedName] = account.gameAccountID
+			self.bnetGameAccounts[mergedName] = gameAccountID
+		end
+
+		if bit.band(result, ExchangeCapabilityFlag.BattleTag) ~= 0 then
+			local battleTag = accountInfo.battleTag
+			self.bnetGameTags[battleTag] = gameAccountID
 		end
 	end
 end
@@ -631,13 +656,22 @@ end
 function Internal:GetBattleNetAccountID(targetName)
 	if not BNFeaturesEnabledAndConnected() then
 		return nil  -- Player isn't connected to Battle.net.
-	elseif not self.bnetGameAccounts then
-		return nil  -- We have no game accounts to search.
 	end
 
-	for playerName, gameAccountID in pairs(self.bnetGameAccounts) do
-		if strcmputf8i(playerName, targetName) == 0 then
-			return gameAccountID
+	local candidates
+
+	if string.find(targetName, "#") then
+		candidates = self.bnetGameTags
+		targetName = string.split("-", targetName, 2)
+	else
+		candidates = self.bnetGameAccounts
+	end
+
+	if candidates then
+		for key, gameAccountID in pairs(candidates) do
+			if strcmputf8i(key, targetName) == 0 then
+				return gameAccountID
+			end
 		end
 	end
 
