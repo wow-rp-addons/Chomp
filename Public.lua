@@ -337,16 +337,6 @@ function Chomp.SmartAddonMessage(prefix, data, kind, target, messageOptions)
 			ToBattleNet(bitField, prefix, Internal.EncodeQuotedPrintable(data, false), kind, bnetIDGameAccount, messageOptions.priority, messageOptions.queue)
 			return "BATTLENET"
 		end
-		local targetUnit = Ambiguate(target, "none")
-		-- Swap the commented line for the one following it to force testing of
-		-- broadcast whispers.
-		--if prefixData.broadcastPrefix and messageOptions.allowBroadcast and UnitInParty(targetUnit) then
-		if prefixData.broadcastPrefix and messageOptions.allowBroadcast and UnitRealmRelationship(targetUnit) == LE_REALM_RELATION_COALESCED then
-			bitField = bit.bor(bitField, Internal.BITS.BROADCAST)
-			kind = UnitInRaid(targetUnit, LE_PARTY_CATEGORY_HOME) and not UnitInSubgroup(targetUnit, LE_PARTY_CATEGORY_HOME) and "RAID" or UnitInParty(targetUnit, LE_PARTY_CATEGORY_HOME) and "PARTY" or "INSTANCE_CHAT"
-			data = ("%s\127%s"):format(not messageOptions.universalBroadcast and Chomp.NameMergedRealm(target) or "", data)
-			target = nil
-		end
 	end
 	if not messageOptions.binaryBlob then
 		ToInGameLogged(bitField, prefix, Internal.EncodeQuotedPrintable(data, true), kind, target, messageOptions.priority, messageOptions.queue)
