@@ -500,11 +500,10 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 		Internal:UpdateBattleNetAccountData()
 	elseif event == "ADDON_LOADED" then
 		-- Tweak CTL's conservative estimates.
-		ChatThrottleLib.MSG_OVERHEAD = math.min(27, ChatThrottleLib.MSG_OVERHEAD)
-
 		if WOW_PROJECT_ID == WOW_PROJECT_MAINLINE then
-			ChatThrottleLib.BURST = math.max(ChatThrottleLib.BURST, 8192)
+			ChatThrottleLib.BURST = math.max(ChatThrottleLib.BURST, 6144)
 			ChatThrottleLib.MAX_CPS = math.max(ChatThrottleLib.MAX_CPS, 2048)
+			ChatThrottleLib.MSG_OVERHEAD = math.min(32, ChatThrottleLib.MSG_OVERHEAD)
 		end
 	end
 end)
