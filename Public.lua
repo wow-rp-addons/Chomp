@@ -157,8 +157,23 @@ function Chomp.BNSendGameData(bnetIDGameAccount, prefix, text, priority, queue, 
 		error("Chomp.BNSendGameData: prefix: length cannot exceed 16 bytes", 2)
 	end
 
-	local chatType = "WHISPER";
-	ChatThrottleLib:BNSendGameData(PRIORITY_TO_CTL[priority] or DEFAULT_PRIORITY, prefix, text, chatType, bnetIDGameAccount, queue, callback, callbackArg)
+	-- Revisit this logic later if/when CTL merges in BNSendGameData support;
+	-- until then let's poke into its guts.
+
+	if not ChatThrottleLib.Enqueue then
+		return
+	end
+
+	ChatThrottleLib:Enqueue(PRIORITY_TO_CTL[priority] or DEFAULT_PRIORITY, queue or prefix, {
+		f = BNSendGameData,
+		callbackFn = callback,
+		callbackArg = callbackArg,
+		nSize = length + (ChatThrottleLib.MSG_OVERHEAD or 40),
+		n = 3,
+		bnetIDGameAccount,
+		prefix,
+		text,
+	})
 end
 
 function Chomp.IsSending()

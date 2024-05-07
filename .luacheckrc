@@ -30,6 +30,7 @@ read_globals = {
 
 	-- ChatThrottleLib
 	"ChatThrottleLib.BNSendGameData",
+	"ChatThrottleLib.Enqueue",
 	"ChatThrottleLib.SendAddonMessage",
 	"ChatThrottleLib.SendAddonMessageLogged",
 	"ChatThrottleLib.SendChatMessage",
@@ -41,6 +42,7 @@ read_globals = {
 	"BNET_CLIENT_WOW",
 	"BNFeaturesEnabledAndConnected",
 	"BNGetNumFriends",
+	"BNSendGameData",
 	"C_BattleNet.GetFriendGameAccountInfo",
 	"C_BattleNet.GetFriendNumGameAccounts",
 	"C_BattleNet.GetGameAccountInfoByID",
