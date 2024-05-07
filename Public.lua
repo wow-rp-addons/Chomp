@@ -151,8 +151,8 @@ function Chomp.BNSendGameData(bnetIDGameAccount, prefix, text, priority, queue, 
 	end
 
 	local length = #text
-	if length > 4078 then
-		error("Chomp.BNSendGameData: text: length cannot exceed 4078 bytes", 2)
+	if length > 255 then
+		error("Chomp.BNSendGameData: text: length cannot exceed 255 bytes", 2)
 	elseif #prefix > 16 then
 		error("Chomp.BNSendGameData: prefix: length cannot exceed 16 bytes", 2)
 	end
@@ -259,7 +259,7 @@ local function BNSendGameDataRearrange(prefix, text, bnetIDGameAccount, ...)
 end
 
 local function ToBattleNet(bitField, prefix, text, kind, bnetIDGameAccount, priority, queue)
-	return SplitAndSend(BNSendGameDataRearrange, 4078, bitField, prefix, text, bnetIDGameAccount, priority, queue)
+	return SplitAndSend(BNSendGameDataRearrange, 255, bitField, prefix, text, bnetIDGameAccount, priority, queue)
 end
 
 local DEFAULT_OPTIONS = {}
