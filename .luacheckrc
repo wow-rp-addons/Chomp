@@ -55,6 +55,7 @@ read_globals = {
 	"GetAutoCompleteRealms",
 	"GetNetStats",
 	"GetRealmName",
+	"GetServerTime",
 	"GetTime",
 	"hooksecurefunc",
 	"IsLoggedIn",
