@@ -26,6 +26,28 @@ local DEFAULT_PRIORITY = "NORMAL"
 local PRIORITIES_HASH = { HIGH = true, MEDIUM = true, LOW = true }
 local PRIORITY_TO_CTL = { LOW = "BULK", MEDIUM = "NORMAL", HIGH = "ALERT" }
 
+local function WillTheSenderBeYeetByTheServer(kind, target)
+	-- With the launch of 10.2.7 comes a server-side bug where whispers to
+	-- target players with extremely long combined "name-realm"s will
+	-- disconnect senders.
+	--
+	-- Due to the severity of the issue, we're just going to blanket route
+	-- such messages to the bin. As users are terrible at updating addons
+	-- however, let's optimistically assume this will be fixed in a few weeks.
+
+	local WORKAROUND_EXPIRES_AT = 1717200000  -- 2024-06-01 00:00:00
+
+	if kind ~= "WHISPER" then
+		return false  -- Only whispers trigger disconnects.
+	elseif #target < 48 then
+		return false  -- Full target name is short enough to not disconnect.
+	elseif GetServerTime() >= WORKAROUND_EXPIRES_AT then
+		return false  -- Blizzard have fixed the issue. We hope.
+	else
+		return true
+	end
+end
+
 function Chomp.SendAddonMessage(prefix, text, kind, target, priority, queue, callback, callbackArg)
 	if type(prefix) ~= "string" then
 		error("Chomp.SendAddonMessage: prefix: expected string, got " .. type(prefix), 2)
@@ -338,6 +360,11 @@ function Chomp.SmartAddonMessage(prefix, data, kind, target, messageOptions)
 			return "BATTLENET"
 		end
 	end
+
+	if WillTheSenderBeYeetByTheServer(kind, target) then
+		return
+	end
+
 	if not messageOptions.binaryBlob then
 		ToInGameLogged(bitField, prefix, Internal.EncodeQuotedPrintable(data, true), kind, target, messageOptions.priority, messageOptions.queue)
 		return "LOGGED"
