@@ -32,17 +32,12 @@ local function WillTheSenderBeYeetByTheServer(kind, target)
 	-- disconnect senders.
 	--
 	-- Due to the severity of the issue, we're just going to blanket route
-	-- such messages to the bin. As users are terrible at updating addons
-	-- however, let's optimistically assume this will be fixed in a few weeks.
-
-	local WORKAROUND_EXPIRES_AT = 1717200000  -- 2024-06-01 00:00:00
+	-- such messages to the bin.
 
 	if kind ~= "WHISPER" then
 		return false  -- Only whispers trigger disconnects.
 	elseif #target < 48 then
 		return false  -- Full target name is short enough to not disconnect.
-	elseif GetServerTime() >= WORKAROUND_EXPIRES_AT then
-		return false  -- Blizzard have fixed the issue. We hope.
 	else
 		return true
 	end
