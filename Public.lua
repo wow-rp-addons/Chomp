@@ -26,23 +26,6 @@ local DEFAULT_PRIORITY = "NORMAL"
 local PRIORITIES_HASH = { HIGH = true, MEDIUM = true, LOW = true }
 local PRIORITY_TO_CTL = { LOW = "BULK", MEDIUM = "NORMAL", HIGH = "ALERT" }
 
-local function WillTheSenderBeYeetByTheServer(kind, target)
-	-- With the launch of 10.2.7 comes a server-side bug where whispers to
-	-- target players with extremely long combined "name-realm"s will
-	-- disconnect senders.
-	--
-	-- Due to the severity of the issue, we're just going to blanket route
-	-- such messages to the bin.
-
-	if kind ~= "WHISPER" then
-		return false  -- Only whispers trigger disconnects.
-	elseif #target < 48 then
-		return false  -- Full target name is short enough to not disconnect.
-	else
-		return true
-	end
-end
-
 function Chomp.SendAddonMessage(prefix, text, kind, target, priority, queue, callback, callbackArg)
 	if type(prefix) ~= "string" then
 		error("Chomp.SendAddonMessage: prefix: expected string, got " .. type(prefix), 2)
@@ -339,10 +322,6 @@ function Chomp.SmartAddonMessage(prefix, data, kind, target, messageOptions)
 			ToBattleNet(bitField, prefix, Internal.EncodeQuotedPrintable(data, false), kind, bnetIDGameAccount, messageOptions.priority, messageOptions.queue)
 			return "BATTLENET"
 		end
-	end
-
-	if WillTheSenderBeYeetByTheServer(kind, target) then
-		return
 	end
 
 	if not messageOptions.binaryBlob then
