@@ -64,6 +64,7 @@ read_globals = {
 	"tInvert",
 	"UnitFactionGroup",
 	"UnitFullName",
+	"UnitGUID",
 	"UnitInParty",
 	"UnitName",
 	"UNKNOWNOBJECT",
