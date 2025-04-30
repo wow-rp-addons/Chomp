@@ -407,6 +407,17 @@ function Internal.DecodeQuotedPrintable(text, restrictBinary)
 	return decodedText
 end
 
+local BINARY_ENCODE_TABLE = { ["\000"] = "\001\001", ["\001"] = "\001\002" }
+local BINARY_DECODE_TABLE = { ["\001\001"] = "\000", ["\001\002"] = "\001" }
+
+function Chomp.EncodeBinary(data)
+	return (string.gsub(data, "[%z\001]", BINARY_ENCODE_TABLE))
+end
+
+function Chomp.DecodeBinary(data)
+	return (string.gsub(data, "\001[\001\002]", BINARY_DECODE_TABLE))
+end
+
 function Chomp.DecodeQuotedPrintable(text)
 	if type(text) ~= "string" then
 		error("Chomp.DecodeQuotedPrintable: text: expected string, got " .. type(text), 2)

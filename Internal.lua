@@ -14,7 +14,7 @@
 	CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ]]
 
-local VERSION = 31
+local VERSION = 32
 
 if IsLoggedIn() then
 	error(("Chomp Message Library (embedded: %s) cannot be loaded after login."):format((...)))
@@ -62,18 +62,18 @@ if Internal.ErrorCallbacks then
 end
 
 Internal.BITS = {
-	SERIALIZE = 0x001,
-	CODECV2   = 0x002,  -- Indicates the message should be processed with codec version 2. Relies upon VERSION16.
-	UNUSED9   = 0x004,
-	VERSION16 = 0x008,  -- Indicates v16+ of Chomp is in use from the sender.
-	BROADCAST = 0x010,
-	NOTUSED6  = 0x020,  -- This is unused but won't report as such on receipt; use sparingly!
-	UNUSED5   = 0x040,
-	UNUSED4   = 0x080,
-	UNUSED3   = 0x100,
-	UNUSED2   = 0x200,
-	UNUSED1   = 0x400,
-	DEPRECATE = 0x800,
+	SERIALIZE_LUA    = 0x001,  -- Indicates the message has a Lua serialized payload.
+	CODECV2          = 0x002,  -- Indicates the message should be processed with codec version 2. Relies upon VERSION16.
+	UNUSED9          = 0x004,
+	VERSION16        = 0x008,  -- Indicates v16+ of Chomp is in use from the sender.
+	BROADCAST        = 0x010,
+	NOTUSED6         = 0x020,  -- This is unused but won't report as such on receipt; use sparingly!
+	SERIALIZE_CBOR   = 0x040,  -- Indicates the message has a CBOR serialized payload.
+	SERIALIZE_JSON   = 0x080,  -- Indicates the message has a JSON serialized payload.
+	COMPRESS_DEFLATE = 0x100,  -- Indicates the message was compressed with the DEFLATE algorithm.
+	UNUSED2          = 0x200,
+	UNUSED1          = 0x400,
+	DEPRECATE        = 0x800,
 }
 
 Internal.KNOWN_BITS = 0
@@ -87,6 +87,111 @@ end
 --[[
 	HELPER FUNCTIONS
 ]]
+
+local CompressString = C_EncodingUtil and C_EncodingUtil.CompressString or nil
+local DecompressString = C_EncodingUtil and C_EncodingUtil.DecompressString or nil
+local DeserializeCBOR = C_EncodingUtil and C_EncodingUtil.DeserializeCBOR or nil
+local DeserializeJSON = C_EncodingUtil and C_EncodingUtil.DeserializeJSON or nil
+local SerializeCBOR = C_EncodingUtil and C_EncodingUtil.SerializeCBOR or nil
+local SerializeJSON = C_EncodingUtil and C_EncodingUtil.SerializeJSON or nil
+
+local COMPRESS_METHODS = {
+	DEFLATE = "DEFLATE",
+}
+
+local SERIALIZE_METHODS = {
+	CBOR = "CBOR",
+	JSON = "JSON",
+	LUA = "LUA",
+}
+
+function Internal.GetCompressionMethodForOption(methodOption)
+	if methodOption == true then
+		return "DEFLATE"
+	else
+		return COMPRESS_METHODS[methodOption]
+	end
+end
+
+function Internal.GetSerializationMethodForOption(methodOption, _binaryBlob)
+	if methodOption == true then
+		-- When v32+ is widely available, this should change to CBOR only if
+		-- the (currently unused) binary blob flag for a message is also set.
+		return "LUA"
+	else
+		return SERIALIZE_METHODS[methodOption]
+	end
+end
+
+function Internal.GetMessageCompressionMethod(bitField)
+	if bit.band(bitField, Internal.BITS.SERIALIZE_CBOR) then
+		return "CBOR"
+	elseif bit.band(bitField, Internal.BITS.SERIALIZE_JSON) then
+		return "JSON"
+	elseif bit.band(bitField, Internal.BITS.SERIALIZE_LUA) then
+		return "LUA"
+	else
+		return nil
+	end
+end
+
+function Internal.GetMessageSerializationMethod(bitField)
+	if bit.band(bitField, Internal.BITS.COMPRESS_DEFLATE) then
+		return "DEFLATE"
+	else
+		return nil
+	end
+end
+
+function Internal.DoesMessageRequireBinaryEncoding(compressMethod, serializeMethod)
+	return (compressMethod ~= nil) or (serializeMethod == "CBOR")
+end
+
+function Internal.SerializeMessage(serializeMethod, data, bitField)
+	if serializeMethod == "CBOR" and SerializeCBOR then
+		bitField = bit.bor(bitField, Internal.BITS.SERIALIZE_CBOR)
+		data = SerializeCBOR(data)
+	elseif serializeMethod == "JSON" and SerializeJSON then
+		bitField = bit.bor(bitField, Internal.BITS.SERIALIZE_JSON)
+		data = SerializeJSON(data)
+	elseif serializeMethod ~= nil then
+		-- This is an '~= nil' check to gracefully downgrade attempts to use
+		-- serialization formats that aren't supported on this client.
+		bitField = bit.bor(bitField, Internal.BITS.SERIALIZE_LUA)
+		data = Chomp.Serialize(data)
+	end
+
+	return data, bitField
+end
+
+function Internal.DeserializeMessage(serializeMethod, data)
+	if serializeMethod == "CBOR" then
+		return DeserializeCBOR(data)
+	elseif serializeMethod == "JSON" then
+		return DeserializeJSON(data)
+	elseif serializeMethod == "LUA" then
+		return Chomp.Deserialize(data)
+	else
+		return data
+	end
+end
+
+function Internal.CompressMessage(compressMethod, data, bitField)
+	if compressMethod == "DEFLATE" and CompressString then
+		bitField = bit.bor(bitField, Internal.BITS.COMPRESS_DEFLATE)
+		data = CompressString(data, Enum.CompressionMethod.Deflate)
+	end
+
+	return data, bitField
+end
+
+function Internal.DecompressMessage(compressMethod, data)
+	if compressMethod == "DEFLATE" then
+		return DecompressString(data, Enum.CompressionMethod.Deflate)
+	else
+		return data
+	end
+end
 
 local oneTimeError
 local function HandleMessageIn(prefix, text, channel, sender, target, zoneChannelID, localID, name, instanceID)
@@ -172,8 +277,10 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 		securecallfunction(prefixData.rawCallback, prefix, text, channel, sender, target, zoneChannelID, localID, name, instanceID, nil, nil, nil, sessionID, msgID, msgTotal, bitField)
 	end
 
-	local deserialize = bit.band(bitField, Internal.BITS.SERIALIZE) == Internal.BITS.SERIALIZE
-	local fullMsgOnly = prefixData.fullMsgOnly or deserialize
+	local compressMethod = Internal.GetMessageCompressionMethod(bitField)
+	local serializeMethod = Internal.GetMessageSerializationMethod(bitField)
+	local encodeBinary = Internal.DoesMessageRequireBinaryEncoding(compressMethod, serializeMethod)
+	local fullMsgOnly = prefixData.fullMsgOnly or (compressMethod ~= nil) or (serializeMethod ~= nil)
 
 	if not prefixData[sender][sessionID] then
 		prefixData[sender][sessionID] = {}
@@ -198,14 +305,28 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 			local handlerData = buffer[i]
 			-- This message is ready for processing.
 			if fullMsgOnly then
-				handlerData = table.concat(buffer)
-				if deserialize then
-					local success, original = pcall(Chomp.Deserialize, handlerData)
-					if success then
-						handlerData = original
-					else
-						handlerData = nil
+				local success, originalData = true, table.concat(buffer)
+
+				if success and encodeBinary then
+					success, originalData = pcall(Chomp.DecodeBinary, originalData)
+				end
+
+				if success and (compressMethod ~= nil) then
+					success, originalData = pcall(Internal.DecompressMessage, compressMethod, originalData)
+				end
+
+				if success and (serializeMethod ~= nil) then
+					success, originalData = pcall(Internal.DeserializeMessage, serializeMethod, originalData)
+				end
+
+				if success then
+					handlerData = originalData
+				else
+					if prefixData.errorCallback then
+						local deserializeError = originalData
+						securecallfunction(prefixData.errorCallback, prefix, handlerData, deserializeError, channel, sender, target, zoneChannelID, localID, name, instanceID, nil, nil, nil, sessionID, msgID, msgTotal, bitField);
 					end
+					handlerData = nil
 				end
 			end
 			if prefixData.validTypes[type(handlerData)] then
