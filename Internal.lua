@@ -128,14 +128,6 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 		return
 	end
 
-	local hasVersion16 = bit.band(bitField, Internal.BITS.VERSION16) ~= 0
-	local hasCodecV2 = bit.band(bitField, Internal.BITS.CODECV2) ~= 0
-	if not hasVersion16 or not hasCodecV2 then
-		-- Sender is using a version of Chomp that's far too old. Ignore
-		-- as we probably can't communicate with them anyway.
-		return
-	end
-
 	if not prefixData[sender] then
 		prefixData[sender] = {}
 	end
