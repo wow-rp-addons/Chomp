@@ -407,15 +407,15 @@ function Internal.DecodeQuotedPrintable(text, restrictBinary)
 	return decodedText
 end
 
-local BINARY_ENCODE_TABLE = { ["\000"] = "\001\001", ["\001"] = "\001\002" }
-local BINARY_DECODE_TABLE = { ["\001\001"] = "\000", ["\001\002"] = "\001" }
+local BINARY_ENCODE_TABLE = { ["\000"] = "\001\002", ["\001"] = "\001\003" }
+local BINARY_DECODE_TABLE = { ["\001\002"] = "\000", ["\001\003"] = "\001" }
 
 function Chomp.EncodeBinary(data)
 	return (string.gsub(data, "[%z\001]", BINARY_ENCODE_TABLE))
 end
 
 function Chomp.DecodeBinary(data)
-	return (string.gsub(data, "\001[\001\002]", BINARY_DECODE_TABLE))
+	return (string.gsub(data, "\001[\002\003]", BINARY_DECODE_TABLE))
 end
 
 function Chomp.DecodeQuotedPrintable(text)
