@@ -49,7 +49,6 @@ read_globals = {
 	"ChatFrame_AddMessageEventFilter",
 	"CreateFrame",
 	"ERR_CHAT_PLAYER_NOT_FOUND_S",
-	"FULL_PLAYER_NAME",
 	"GetAutoCompleteRealms",
 	"GetNetStats",
 	"GetRealmName",
