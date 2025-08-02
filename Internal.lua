@@ -14,7 +14,7 @@
 	CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ]]
 
-local VERSION = 31
+local VERSION = 32
 
 if IsLoggedIn() then
 	error(("Chomp Message Library (embedded: %s) cannot be loaded after login."):format((...)))
@@ -125,14 +125,6 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 			oneTimeError = true
 			error("Chomp: Received an addon message that cannot be parsed, check your addons for updates. (This message will only display once per session, but there may be more unusable addon messages.)")
 		end
-		return
-	end
-
-	local hasVersion16 = bit.band(bitField, Internal.BITS.VERSION16) ~= 0
-	local hasCodecV2 = bit.band(bitField, Internal.BITS.CODECV2) ~= 0
-	if not hasVersion16 or not hasCodecV2 then
-		-- Sender is using a version of Chomp that's far too old. Ignore
-		-- as we probably can't communicate with them anyway.
 		return
 	end
 
