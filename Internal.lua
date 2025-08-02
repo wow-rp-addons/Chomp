@@ -346,10 +346,6 @@ local function EnumerateFriendGameAccounts()
 	return NextGameAccount
 end
 
-local function NormalizeRealmName(realmName)
-	return (string.gsub(realmName, "[%s-]", ""))
-end
-
 local function CanExchangeWithGameAccount(account)
 	if not account.isOnline then
 		return false  -- Friend isn't even online.
@@ -360,7 +356,7 @@ local function CanExchangeWithGameAccount(account)
 	end
 
 	local characterName = account.characterName
-	local realmName     = account.realmName and NormalizeRealmName(account.realmName) or nil
+	local realmName     = account.realmName and Chomp.NormalizeRealmName(account.realmName) or nil
 	local factionName   = account.factionName
 
 	if not characterName or characterName == "" or characterName == UNKNOWNOBJECT then
@@ -386,7 +382,7 @@ function Internal:UpdateBattleNetAccountData()
 	for _, _, account in EnumerateFriendGameAccounts() do
 		if CanExchangeWithGameAccount(account) then
 			local characterName = account.characterName
-			local realmName = string.gsub(account.realmName, "[%s*%-*]", "")
+			local realmName = Chomp.NormalizeRealmName(account.realmName)
 			local mergedName = Chomp.NameMergedRealm(characterName, realmName)
 
 			self.bnetGameAccounts[mergedName] = account.gameAccountID
@@ -467,9 +463,9 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 		hooksecurefunc(C_ChatInfo, "SendAddonMessageLogged", HookSendAddonMessageLogged)
 		ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", MessageEventFilter_SYSTEM)
 		self.SameRealm = {}
-		self.SameRealm[(GetRealmName():gsub("[%s%-]", ""))] = true
+		self.SameRealm[(Chomp.NormalizeRealmName(GetRealmName()))] = true
 		for i, realm in ipairs(GetAutoCompleteRealms()) do
-			self.SameRealm[(realm:gsub("[%s%-]", ""))] = true
+			self.SameRealm[(Chomp.NormalizeRealmName(realm))] = true
 		end
 		Internal.isReady = true
 		if self.IncomingQueue then
