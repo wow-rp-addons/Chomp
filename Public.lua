@@ -251,6 +251,7 @@ local function ToBattleNet(bitField, prefix, text, kind, bnetIDGameAccount, prio
 end
 
 local DEFAULT_OPTIONS = {}
+
 function Chomp.SmartAddonMessage(prefix, data, kind, target, messageOptions)
 	local prefixData = Internal.Prefixes[prefix]
 	if not prefixData then
@@ -269,6 +270,10 @@ function Chomp.SmartAddonMessage(prefix, data, kind, target, messageOptions)
 		messageOptions = DEFAULT_OPTIONS
 	end
 
+	local compressMethod = Internal.GetCompressionMethodForOption(messageOptions.compress)
+	local serializeMethod = Internal.GetSerializationMethodForOption(messageOptions.serialize, messageOptions.binaryBlob)
+	local encodeBinary = Internal.DoesMessageRequireBinaryEncoding(compressMethod, serializeMethod)
+
 	local dataType = type(data)
 	if not prefixData.validTypes[dataType] then
 		error("Chomp.SmartAddonMessage: data: type not registered as valid: " .. dataType, 2)
@@ -276,8 +281,14 @@ function Chomp.SmartAddonMessage(prefix, data, kind, target, messageOptions)
 		error("Chomp.SmartAddonMessage: data: no serialization requested, but serialization required for type: " .. dataType, 2)
 	elseif messageOptions.priority and not PRIORITIES_HASH[messageOptions.priority] then
 		error("Chomp.SmartAddonMessage: messageOptions.priority: expected \"HIGH\", \"MEDIUM\", or \"LOW\", got " .. tostring(messageOptions.priority), 2)
+	elseif messageOptions.serialize and not serializeMethod then
+		error("Chomp.SmartAddonMessage: messageOptions.serialize: expected \"CBOR\", \"JSON\" or \"LUA\", or true, got " .. tostring(messageOptions.serialize), 2)
+	elseif messageOptions.compress and not compressMethod then
+		error("Chomp.SmartAddonMessage: messageOptions.compress: expected \"DEFLATE\" or true, got " .. tostring(messageOptions.compress), 2)
 	elseif messageOptions.queue and type(messageOptions.queue) ~= "string" then
 		error("Chomp.SmartAddonMessage: messageOptions.queue: expected string or nil, got " .. type(messageOptions.queue), 2)
+	elseif not messageOptions.binaryBlob and encodeBinary then
+		error("Chomp.SmartAddonMessage: messageOptions.binaryBlob: binary serialization or compression requested, but message is not marked as a binary blob")
 	end
 
 	local bitField = 0x000
@@ -287,10 +298,14 @@ function Chomp.SmartAddonMessage(prefix, data, kind, target, messageOptions)
 	--      versions are widely distributed, we can stop setting these bits.
 	bitField = bit.bor(bitField, Internal.BITS.VERSION16, Internal.BITS.CODECV2)
 
-	if messageOptions.serialize then
-		bitField = bit.bor(bitField, Internal.BITS.SERIALIZE)
-		data = Chomp.Serialize(data)
+	data, bitField = Internal.SerializeMessage(serializeMethod, data, bitField)
+	data, bitField = Internal.CompressMessage(compressMethod, data, bitField)
+
+	if encodeBinary then
+		-- On receipt, binary data encoding is inferred from other flags.
+		data = Chomp.EncodeBinary(data)
 	end
+
 	if not messageOptions.binaryBlob then
 		local permitted, reason = Chomp.CheckLoggedContents(data)
 		if not permitted then
