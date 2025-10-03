@@ -461,7 +461,7 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 		_G.__chomp_internal = nil
 		hooksecurefunc(C_ChatInfo, "SendAddonMessage", HookSendAddonMessage)
 		hooksecurefunc(C_ChatInfo, "SendAddonMessageLogged", HookSendAddonMessageLogged)
-		ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", MessageEventFilter_SYSTEM)
+		ChatFrameUtil.AddMessageEventFilter("CHAT_MSG_SYSTEM", MessageEventFilter_SYSTEM)
 		self.SameRealm = {}
 		self.SameRealm[(Chomp.NormalizeRealmName(GetRealmName()))] = true
 		for i, realm in ipairs(GetAutoCompleteRealms()) do
