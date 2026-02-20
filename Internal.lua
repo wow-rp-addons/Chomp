@@ -411,7 +411,7 @@ function Internal:GetBattleNetAccountID(targetName)
 		return nil  -- Player isn't connected to Battle.net.
 	elseif not self.bnetGameAccounts then
 		return nil  -- We have no game accounts to search.
-	elseif UnitGUID(Ambiguate(targetName, "none")) then
+	elseif UnitExists(Ambiguate(targetName, "none")) and UnitGUID(Ambiguate(targetName, "none")) then
 		return nil  -- We think the player is in our group.
 	end
 
