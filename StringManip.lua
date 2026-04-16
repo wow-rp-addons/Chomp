@@ -199,7 +199,7 @@ local function IsStringLoadSafe(str)
 	local inQuotedString = false
 
 	repeat
-		offset = strfind(str, [=[["\(]]=], offset)
+		offset = strfind(str, [=[["\(%[%]]]=], offset)
 
 		if not offset then
 			break
