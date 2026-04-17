@@ -199,7 +199,7 @@ local function IsStringLoadSafe(str)
 	local inQuotedString = false
 
 	repeat
-		offset = strfind(str, [=[["\(%[]]=], offset)
+		offset = strfind(str, '["\\([\n-]', offset)
 
 		if not offset then
 			break
@@ -217,9 +217,12 @@ local function IsStringLoadSafe(str)
 				offset = offset + 1
 			end
 		elseif not inQuotedString then
-			if byte ~= 0x5b or strfind(str, "^%[[=%[]", offset) then
-				-- Found either a backslash or left-paren outside a string, or the start of an '[[' style string.
-				return false, string.format("unexpected character \"%1$s\" at offset %2$d", string.char(byte), offset)
+			if byte == 0x5b and strfind(str, '^[[=]', offset + 1) then
+			    return false, string.format("unexpected long string at offset %1$d", offset)
+			elseif byte == 0x2d and strfind(str, '^%-', offset + 1) then
+			    return false, string.format("unexpected comment at offset %1$d", offset)
+			elseif byte ~= 0x5b and byte ~= 0x2d then
+			    return false, string.format("unexpected character \"%1$s\" at offset %2$d", string.char(byte), offset)
 			end
 		end
 
