@@ -375,10 +375,6 @@ function Deserializer:ParseTable()
 end
 
 local function DeserializeInner(text)
-	if type(text) ~= "string" then
-		error("Chomp.DeserializeX: text: expected string, got " .. type(text), 2)
-	end
-
 	local reader = setmetatable({
 		text = text,
 		pos = 1,
