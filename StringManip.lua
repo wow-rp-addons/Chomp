@@ -174,95 +174,238 @@ function Chomp.Serialize(object)
 	return serialized
 end
 
-local IsTableSafe
-function IsTableSafe(t)
-	for k,v in pairs(t) do
-		local typeK, typeV = type(k), type(v)
-		if not Serialize[typeK] or not Serialize[typeV] then
-			return false
-		elseif typeK == "table" and not IsTableSafe(k) then
-			return false
-		elseif typeV == "table" and not IsTableSafe(v) then
-			return false
+local Deserializer = {}
+Deserializer.__index = Deserializer
+
+function Deserializer:PeekChar()
+	if self.pos > self.len then
+		return nil
+	end
+	return self.text:sub(self.pos, self.pos)
+end
+
+function Deserializer:ConsumeChar(expected)
+	if self.pos > self.len then
+		error("Unexpected end of input")
+	end
+	local char = self.text:sub(self.pos, self.pos)
+	if expected and char ~= expected then
+		error(("Expected '%s' but found '%s'"):format(expected, char))
+	end
+	self.pos = self.pos + 1
+	return char
+end
+
+function Deserializer:ParseString()
+	self:ConsumeChar("\"")
+	local parts = {}
+
+	while self.pos <= self.len do
+		local nextSpecial = self.text:find('["\\]', self.pos)
+
+		if not nextSpecial then
+			error("Unterminated string")
+		end
+
+		-- Add content up to special character
+		if nextSpecial > self.pos then
+			table.insert(parts, self.text:sub(self.pos, nextSpecial - 1))
+		end
+
+		if self.text:byte(nextSpecial) == 34 then
+			-- Terminating quote
+			self.pos = nextSpecial + 1
+			return table.concat(parts)
+		else
+			-- Escape sequence
+			self.pos = nextSpecial + 1
+			if self.pos > self.len then
+				error("Unterminated string")
+			end
+			local escaped = self.text:sub(self.pos, self.pos)
+			if escaped == "n" then
+				table.insert(parts, "\n")
+			elseif escaped == "t" then
+				table.insert(parts, "\t")
+			elseif escaped == "r" then
+				table.insert(parts, "\r")
+			elseif escaped == "b" then
+				table.insert(parts, "\b")
+			elseif escaped == "f" then
+				table.insert(parts, "\f")
+			elseif escaped == "v" then
+				table.insert(parts, "\v")
+			elseif escaped == "a" then
+				table.insert(parts, "\a")
+			elseif escaped == "\\" then
+				table.insert(parts, "\\")
+			elseif escaped == "\"" then
+				table.insert(parts, "\"")
+			elseif escaped == "z" then
+				table.insert(parts, "\0")
+			elseif escaped:find("%d") then
+				-- Decimal escape: \ddd (up to 3 digits)
+				local digits = self.text:match("^%d%d?%d?", self.pos)
+				self.pos = self.pos + (#digits - 1)
+				local decimal = tonumber(digits)
+				if not decimal or decimal > 255 then
+					error("Invalid decimal escape")
+				end
+				table.insert(parts, string.char(decimal))
+			else
+				table.insert(parts, escaped)
+			end
+			self.pos = self.pos + 1
 		end
 	end
-	return true
+
+	error("Unterminated string")
 end
 
-local function IsStringLoadSafe(str)
-	local strbyte = string.byte
-	local strfind = string.find
+function Deserializer:ParseNumber()
+	local str = self.text:match("^-?[%d.eE%+%-]+", self.pos)
 
-	local offset = 1
-	local length = #str
+	if not str then
+		error("Invalid number")
+	end
 
-	local inQuotedString = false
+	local num = tonumber(str)
+	if not num then
+		error(("Invalid number: '%s'"):format(str))
+	end
 
-	repeat
-		offset = strfind(str, '["\\([\n-]', offset)
+	self.pos = self.pos + #str
+	return num
+end
 
-		if not offset then
+function Deserializer:ParseKeyword()
+	local keyword = self.text:match("^[a-zA-Z_][a-zA-Z0-9_]*", self.pos)
+
+	if not keyword then
+		error("Invalid keyword")
+	end
+
+	self.pos = self.pos + #keyword
+
+	if keyword == "true" then
+		return true
+	elseif keyword == "false" then
+		return false
+	elseif keyword == "nil" then
+		return nil
+	else
+		error(("Unknown keyword: '%s'"):format(keyword))
+	end
+end
+
+function Deserializer:ParseValue()
+	if self.pos > self.len then
+		error("Expected value, got end of input")
+	end
+
+	local char = self.text:sub(self.pos, self.pos)
+
+	if char == "{" then
+		return self:ParseTable()
+	elseif char == "\"" then
+		return self:ParseString()
+	elseif char == "-" or char == "." or char:find("%d") then
+		return self:ParseNumber()
+	elseif char:find("[a-zA-Z_]") then
+		return self:ParseKeyword()
+	else
+		error(("Unexpected character: '%s'"):format(char))
+	end
+end
+
+function Deserializer:ParseTable()
+	self:ConsumeChar("{")
+
+	local result = {}
+	local arrayIndex = 1
+
+	while self.pos <= self.len do
+		local char = self:PeekChar()
+
+		if char == nil then
+			error("Unexpected end of input in table")
+		elseif char == "}" then
+			self:ConsumeChar("}")
 			break
+		elseif char == "[" then
+			-- '[key] = value' format
+			self:ConsumeChar("[")
+			local key = self:ParseValue()
+			self:ConsumeChar("]")
+			self:ConsumeChar("=")
+			local value = self:ParseValue()
+
+			if key == nil then
+				error("Unexpected nil key in table")
+			end
+
+			result[key] = value
+		else
+			local identifier = self.text:match("^([a-zA-Z_][a-zA-Z0-9_]*)=", self.pos)
+
+			if identifier then
+				-- 'identifier = value' format
+				self.pos = self.pos + #identifier
+				self:ConsumeChar("=")
+				local value = self:ParseValue()
+				result[identifier] = value
+			else
+				-- Parse as array element
+				local value = self:ParseValue()
+				result[arrayIndex] = value
+				arrayIndex = arrayIndex + 1
+			end
 		end
 
-		local byte = strbyte(str, offset, offset)
+		char = self:PeekChar()
 
-		if byte == 0x22 then
-			inQuotedString = not inQuotedString
-		elseif inQuotedString and byte == 0x5c then
-			-- Found backslash inside a string, skip next if it's a quote or
-			-- another backslash.
-			local next = strbyte(str, offset + 1, offset + 1)
-			if next == 0x22 or next == 0x5c then
-				offset = offset + 1
-			end
-		elseif not inQuotedString then
-			if byte == 0x5b and strfind(str, '^[[=]', offset + 1) then
-			    return false, string.format("unexpected long string at offset %1$d", offset)
-			elseif byte == 0x2d and strfind(str, '^%-', offset + 1) then
-			    return false, string.format("unexpected comment at offset %1$d", offset)
-			elseif byte ~= 0x5b and byte ~= 0x2d then
-			    return false, string.format("unexpected character \"%1$s\" at offset %2$d", string.char(byte), offset)
-			end
+		if char == "," then
+			self:ConsumeChar(",")
+		elseif char ~= "}" then
+			error(("Expected ',' or '}' in table, got '%s'"):format(char or "EOF"))
 		end
+	end
 
-		offset = offset + 1
-	until offset > length
-
-	return true
+	return result
 end
 
-local EMPTY_ENV = setmetatable({}, {
-	__newindex = function() end,
-	__metatable = false,
-})
+local function DeserializeInner(text)
+	if type(text) ~= "string" then
+		error("Chomp.DeserializeX: text: expected string, got " .. type(text), 2)
+	end
+
+	local reader = setmetatable({
+		text = text,
+		pos = 1,
+		len = #text,
+	}, Deserializer)
+
+	local value = reader:ParseValue()
+
+	if reader.pos <= reader.len then
+		error("Extra characters after value")
+	end
+
+	return value
+end
 
 function Chomp.Deserialize(text)
 	if type(text) ~= "string" then
 		error("Chomp.Deserialize: text: expected string, got " .. type(text), 2)
 	end
 
-	local isSafe, reason = IsStringLoadSafe(text)
-	if not isSafe then
-		error("Chomp.Deserialize: text: " .. reason, 2)
-	end
-
-	local func, loadError = loadstring(("return %s"):format(text))
-	if not func then
-		error("Chomp.Deserialize: text: could not be deserialized: " .. tostring(loadError), 2)
-	end
-
-	setfenv(func, EMPTY_ENV)
-
-	local retSuccess, ret = pcall(func)
+	local retSuccess, ret = pcall(DeserializeInner, text)
 	local retType = type(ret)
 
 	if not retSuccess then
 		error("Chomp.Deserialize: text: error while reading data", 2)
 	elseif not Serialize[retType] then
-		error("Chomp.Deserialize: text: deserialized to invalid type: " .. type(ret), 2)
-	elseif retType == "table" and text:find("function", nil, true) and not IsTableSafe(ret) then
-		error("Chomp.Deserialize: text: deserialized table included forbidden type", 2)
+		error("Chomp.Deserialize: text: deserialized to invalid type: " .. retType, 2)
 	end
 
 	return ret
