@@ -399,7 +399,7 @@ function Chomp.Deserialize(text)
 	local retType = type(ret)
 
 	if not retSuccess then
-		error("Chomp.Deserialize: text: error while reading data", 2)
+		error("Chomp.Deserialize: text: error while reading data: " .. ret, 2)
 	elseif not Serialize[retType] then
 		error("Chomp.Deserialize: text: deserialized to invalid type: " .. retType, 2)
 	end
