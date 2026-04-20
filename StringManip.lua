@@ -311,7 +311,7 @@ function Deserializer:ParseValue()
 		return self:ParseString()
 	elseif char == "-" or char == "." or char:find("%d") then
 		return self:ParseNumber()
-	elseif char:find("[a-zA-Z_]") then
+	elseif char and char:find("[a-zA-Z_]") then
 		return self:ParseKeyword()
 	else
 		error(("Unexpected character: '%s'"):format(char or "EOF"))
