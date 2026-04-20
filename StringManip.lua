@@ -263,7 +263,7 @@ function Deserializer:ParseString()
 end
 
 function Deserializer:ParseNumber()
-	local str = self.text:match("^-?[%d.eE%+%-]+", self.pos)
+	local str = self.text:match("^-?[%d.eE+-]+", self.pos)
 
 	if not str then
 		error("Invalid number")
@@ -303,7 +303,7 @@ function Deserializer:ParseValue()
 		error("Expected value, got end of input")
 	end
 
-	local char = self.text:sub(self.pos, self.pos)
+	local char = self:PeekChar()
 
 	if char == "{" then
 		return self:ParseTable()
@@ -314,7 +314,7 @@ function Deserializer:ParseValue()
 	elseif char:find("[a-zA-Z_]") then
 		return self:ParseKeyword()
 	else
-		error(("Unexpected character: '%s'"):format(char))
+		error(("Unexpected character: '%s'"):format(char or "EOF"))
 	end
 end
 
