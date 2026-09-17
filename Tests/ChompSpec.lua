@@ -111,7 +111,7 @@ describe("Chomp.NameMergedRealm", function()
 		end)
 
 		it("preserves a full name with a second return value", function()
-			assert(Chomp.NameMergedRealm("John Stormwind", "Realm") == "John Stormwind")
+			assert(Chomp.NameMergedRealm("John Stormwind", "Stormwind") == "John Stormwind")
 		end)
 	end)
 end)
