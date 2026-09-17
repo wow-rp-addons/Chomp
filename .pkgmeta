@@ -11,4 +11,4 @@ ignore:
   - Libs/*/*.toc
   - Libs/*/tests
   - .gitkeep
-  - Makefile
+  - Justfile
