@@ -71,12 +71,17 @@ function Chomp.NameMergedRealm(name, realm)
 	end
 
 	if Chomp.RegionalUniqueNamesEnabled() then
-		if realm and realm ~= "" then
-			return string.join(SURNAME_SEPARATOR, name, realm)
-		elseif string.contains(name, SURNAME_SEPARATOR) then
+		if not realm or realm == "" then
+			if not string.contains(name, SURNAME_SEPARATOR) then
+				error("Chomp.NameMergedRealm: expected a full name", 2)
+			end
+
 			return name
+		elseif not string.contains(name, SURNAME_SEPARATOR) then
+			return string.join(SURNAME_SEPARATOR, name, realm)
+		else
+			error("Chomp.NameMergedRealm: name already has a surname, but surname also provided")
 		end
-		error("Chomp.NameMergedRealm: expected a full name", 2)
 	end
 
 	-- Normally you'd just return the full input name without reformatting,
