@@ -52,8 +52,8 @@ local function EncodeTooManyContinuations(s1, s2)
 	return s1 .. (s2:gsub(".", EncodeCharToQuotedPrintable))
 end
 
-local REALM_NAME_SEPARATOR = Constants.CharacterNameSeparatorConsts and Constants.CharacterNameSeparatorConsts.CHARACTERNAME_REALMNAME_SEPARATOR or "-";
-local SURNAME_SEPARATOR = Constants.CharacterNameSeparatorConsts and Constants.CharacterNameSeparatorConsts.CHARACTERNAME_SURNAME_SEPARATOR or " ";
+Chomp.REALM_NAME_SEPARATOR = Constants.CharacterNameSeparatorConsts and Constants.CharacterNameSeparatorConsts.CHARACTERNAME_REALMNAME_SEPARATOR or "-";
+Chomp.SURNAME_SEPARATOR = Constants.CharacterNameSeparatorConsts and Constants.CharacterNameSeparatorConsts.CHARACTERNAME_SURNAME_SEPARATOR or " ";
 
 function Chomp.RegionalUniqueNamesEnabled()
 	if RegionalUniqueNamesEnabled then
@@ -72,13 +72,13 @@ function Chomp.NameMergedRealm(name, realm)
 
 	if Chomp.RegionalUniqueNamesEnabled() then
 		if not realm or realm == "" then
-			if not string.contains(name, SURNAME_SEPARATOR) then
+			if not string.contains(name, Chomp.SURNAME_SEPARATOR) then
 				error("Chomp.NameMergedRealm: expected a full name", 2)
 			end
 
 			return name
-		elseif not string.contains(name, SURNAME_SEPARATOR) then
-			return string.join(SURNAME_SEPARATOR, name, realm)
+		elseif not string.contains(name, Chomp.SURNAME_SEPARATOR) then
+			return string.join(Chomp.SURNAME_SEPARATOR, name, realm)
 		else
 			-- Some APIs such as UnitFullName unhelpfully return the full name
 			-- as one value, and the internal realm name as the second. Ignore
@@ -102,7 +102,7 @@ function Chomp.NameMergedRealm(name, realm)
 		error("Chomp.NameMergedRealm: name already has a realm name, but realm name also provided")
 	end
 
-	return string.join(REALM_NAME_SEPARATOR, name, (Chomp.NormalizeRealmName(realm)))
+	return string.join(Chomp.REALM_NAME_SEPARATOR, name, (Chomp.NormalizeRealmName(realm)))
 end
 
 function Chomp.NameSplitRealm(nameRealm)
@@ -110,14 +110,14 @@ function Chomp.NameSplitRealm(nameRealm)
 		return
 	end
 
-	local name, realm = string.split(REALM_NAME_SEPARATOR, nameRealm, 2)
+	local name, realm = string.split(Chomp.REALM_NAME_SEPARATOR, nameRealm, 2)
 
 	if name and realm and realm ~= "" then
 		return name, realm
 	end
 end
 
-local NORMALIZE_REALM_PATTERN = "[%s%.%" .. REALM_NAME_SEPARATOR .. "]"
+local NORMALIZE_REALM_PATTERN = "[%s%.%" .. Chomp.REALM_NAME_SEPARATOR .. "]"
 
 function Chomp.NormalizeRealmName(realmName)
 	return (string.gsub(realmName, NORMALIZE_REALM_PATTERN, ""))
