@@ -52,11 +52,31 @@ local function EncodeTooManyContinuations(s1, s2)
 	return s1 .. (s2:gsub(".", EncodeCharToQuotedPrintable))
 end
 
+local REALM_NAME_SEPARATOR = Constants.CharacterNameSeparatorConsts and Constants.CharacterNameSeparatorConsts.CHARACTERNAME_REALMNAME_SEPARATOR or "-";
+local SURNAME_SEPARATOR = Constants.CharacterNameSeparatorConsts and Constants.CharacterNameSeparatorConsts.CHARACTERNAME_SURNAME_SEPARATOR or " ";
+
+function Chomp.RegionalUniqueNamesEnabled()
+	if RegionalUniqueNamesEnabled then
+		return RegionalUniqueNamesEnabled()
+	else
+		return false
+	end
+end
+
 function Chomp.NameMergedRealm(name, realm)
 	if type(name) ~= "string" then
 		error("Chomp.NameMergedRealm: name: expected string, got " .. type(name), 2)
 	elseif name == "" then
 		error("Chomp.NameMergedRealm: name: expected non-empty string", 2)
+	end
+
+	if Chomp.RegionalUniqueNamesEnabled() then
+		if realm and realm ~= "" then
+			return string.join(SURNAME_SEPARATOR, name, realm)
+		elseif string.contains(name, SURNAME_SEPARATOR) then
+			return name
+		end
+		error("Chomp.NameMergedRealm: expected a full name", 2)
 	end
 
 	-- Normally you'd just return the full input name without reformatting,
@@ -74,19 +94,25 @@ function Chomp.NameMergedRealm(name, realm)
 		error("Chomp.NameMergedRealm: name already has a realm name, but realm name also provided")
 	end
 
-	return string.join("-", name, (Chomp.NormalizeRealmName(realm)))
+	return string.join(REALM_NAME_SEPARATOR, name, (Chomp.NormalizeRealmName(realm)))
 end
 
 function Chomp.NameSplitRealm(nameRealm)
-	local name, realm = string.split("-", nameRealm, 2)
+	if Chomp.RegionalUniqueNamesEnabled() then
+		return
+	end
+
+	local name, realm = string.split(REALM_NAME_SEPARATOR, nameRealm, 2)
 
 	if name and realm and realm ~= "" then
 		return name, realm
 	end
 end
 
+local NORMALIZE_REALM_PATTERN = "[%s%.%" .. REALM_NAME_SEPARATOR .. "]"
+
 function Chomp.NormalizeRealmName(realmName)
-	return (string.gsub(realmName, "[%s%-%.]", ""))
+	return (string.gsub(realmName, NORMALIZE_REALM_PATTERN, ""))
 end
 
 local Serialize = setmetatable({}, {

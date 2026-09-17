@@ -24,6 +24,11 @@ function table.wipe(tbl)
 end
 
 -- luacheck: ignore
+function string.contains(str, substring)
+	return string.find(str, substring, 1, true) ~= nil
+end
+
+-- luacheck: ignore
 function string.split(separator, value)
 	local separatorStart, separatorEnd = string.find(value, separator, 1, true)
 	if not separatorStart then
@@ -188,6 +193,10 @@ end
 
 function BNGetNumFriends()
 	return 0
+end
+
+function RegionalUniqueNamesEnabled()
+	return false
 end
 
 LoadFile("Libs/LibStub/LibStub.lua")

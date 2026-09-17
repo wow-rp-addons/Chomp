@@ -1,7 +1,7 @@
 PACKAGER_URL := "https://raw.githubusercontent.com/BigWigsMods/packager/master/release.sh"
 LUA := env_var_or_default("LUA", "lua5.1")
 
-default: check
+default: check test
 
 check:
 	luacheck -q $(git ls-files '*.lua')
