@@ -6,8 +6,9 @@ max_string_line_length = false
 max_comment_line_length = false
 
 exclude_files = {
-    ".release",
-    "Libs/*",
+	".luarocks",
+	".release",
+	"Libs/*",
 }
 
 std = "lua51"
