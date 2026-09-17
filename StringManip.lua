@@ -80,7 +80,10 @@ function Chomp.NameMergedRealm(name, realm)
 		elseif not string.contains(name, SURNAME_SEPARATOR) then
 			return string.join(SURNAME_SEPARATOR, name, realm)
 		else
-			error("Chomp.NameMergedRealm: name already has a surname, but surname also provided")
+			-- Some APIs such as UnitFullName unhelpfully return the full name
+			-- as one value, and the internal realm name as the second. Ignore
+			-- the realm and just return the full name.
+			return name
 		end
 	end
 
