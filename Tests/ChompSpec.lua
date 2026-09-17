@@ -1,6 +1,7 @@
 -- luacheck: globals describe it before_each after_each mock stub
 
 local Chomp = require("SpecHelper")
+local Internal = Chomp.Internal
 
 describe("Chomp", function()
 	it("loads the addon Lua files", function()
