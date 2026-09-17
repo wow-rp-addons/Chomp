@@ -263,8 +263,8 @@ local function GenerateMessageFilterKey(target)
 
 	local filterKey = string.split("-", target, 2)
 
-	if string.utf8lower then
-		filterKey = string.utf8lower(filterKey)
+	if C_Intl then
+		filterKey = C_Intl.FoldCase(filterKey)
 	else
 		filterKey = string.lower(filterKey)
 	end

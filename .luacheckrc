@@ -21,9 +21,6 @@ globals = {
 }
 
 read_globals = {
-	-- UTF8 library (optional dependency)
-	"string.utf8lower",
-
 	-- LibStub
 	"LibStub.GetLibrary",
 	"LibStub.NewLibrary",
@@ -46,6 +43,7 @@ read_globals = {
 	"C_BattleNet.GetGameAccountInfoByID",
 	"C_ChatInfo.IsAddonMessagePrefixRegistered",
 	"C_ChatInfo.RegisterAddonMessagePrefix",
+	"C_Intl.FoldCase",
 	"ChatFrame_AddMessageEventFilter",
 	"Constants.CharacterNameSeparatorConsts.CHARACTERNAME_REALMNAME_SEPARATOR",
 	"Constants.CharacterNameSeparatorConsts.CHARACTERNAME_SURNAME_SEPARATOR",
