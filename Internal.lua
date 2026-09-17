@@ -256,12 +256,15 @@ if not Internal.MessageFilterKeyCache then
 	Internal.MessageFilterKeyCache = {}
 end
 
-local function GenerateMessageFilterKey(target)
-	-- Due to systemic issues across ourselves, LibMSP, TRP, etc. this
-	-- filter has been hacked to only use the character name of the player
-	-- and to discard the realm.
+function Internal:GenerateMessageFilterKey(target)
+	local filterKey = target
 
-	local filterKey = string.split("-", target, 2)
+	if not Chomp.RegionalUniqueNamesEnabled() then
+		-- Due to systemic issues across ourselves, LibMSP, TRP, etc. this
+		-- filter has been creatively adjusted to only use the character name
+		-- of the player and to discard the realm.
+		filterKey = string.split(Chomp.REALM_NAME_SEPARATOR, filterKey, 2)
+	end
 
 	if C_Intl then
 		filterKey = C_Intl.FoldCase(filterKey)
@@ -274,7 +277,7 @@ end
 
 setmetatable(Internal.MessageFilterKeyCache, {
 	__index = function(self, target)
-		local filterKey = GenerateMessageFilterKey(target)
+		local filterKey = Internal:GenerateMessageFilterKey(target)
 		self[target] = filterKey
 		return filterKey
 	end,
