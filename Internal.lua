@@ -349,7 +349,7 @@ local function EnumerateFriendGameAccounts()
 	return NextGameAccount
 end
 
-local function CanExchangeWithGameAccount(account)
+function Internal:CanExchangeWithGameAccount(account)
 	if not account.isOnline then
 		return false  -- Friend isn't even online.
 	elseif account.clientProgram ~= BNET_CLIENT_WOW then
@@ -359,17 +359,35 @@ local function CanExchangeWithGameAccount(account)
 	end
 
 	local characterName = account.characterName
-	local realmName     = account.realmName and Chomp.NormalizeRealmName(account.realmName) or nil
 	local factionName   = account.factionName
+	local realmName     = nil
+
+	-- When regional unique names are enabled, character name contains the
+	-- "Full Name" and realm name is the backing realm. We don't need the
+	-- realm, so ignore it.
+	if not Chomp.RegionalUniqueNamesEnabled() then
+		realmName = Chomp.NormalizeRealmName(account.realmName or "")
+	end
 
 	if not characterName or characterName == "" or characterName == UNKNOWNOBJECT then
 		return false  -- Character name is invalid.
-	elseif not realmName or realmName == "" then
+	elseif realmName == "" then
 		return false  -- Realm name is invalid.
-	elseif Internal.SameRealm[realmName] and factionName == UnitFactionGroup("player") then
-		return false  -- This character is on the same faction and realm.
+	elseif (realmName == nil or Internal.SameRealm[realmName]) and factionName == UnitFactionGroup("player") then
+		-- This character is on the same faction and realm. On servers with
+		-- regional-unique names, we intentionally exclude all same-faction
+		-- players.
+		return false
 	else
 		return true
+	end
+end
+
+function Internal:GetBattleNetAccountKey(account)
+	if Chomp.RegionalUniqueNamesEnabled() then
+		return account.characterName
+	else
+		return Chomp.NameMergedRealm(account.characterName, Chomp.NormalizeRealmName(account.realmName))
 	end
 end
 
@@ -383,12 +401,9 @@ function Internal:UpdateBattleNetAccountData()
 	end
 
 	for _, _, account in EnumerateFriendGameAccounts() do
-		if CanExchangeWithGameAccount(account) then
-			local characterName = account.characterName
-			local realmName = Chomp.NormalizeRealmName(account.realmName)
-			local mergedName = Chomp.NameMergedRealm(characterName, realmName)
-
-			self.bnetGameAccounts[mergedName] = account.gameAccountID
+		if Internal:CanExchangeWithGameAccount(account) then
+			local accountKey = Internal:GetBattleNetAccountKey(account)
+			self.bnetGameAccounts[accountKey] = account.gameAccountID
 		end
 	end
 end
@@ -466,9 +481,11 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 		hooksecurefunc(C_ChatInfo, "SendAddonMessageLogged", HookSendAddonMessageLogged)
 		ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", MessageEventFilter_SYSTEM)
 		self.SameRealm = {}
-		self.SameRealm[(Chomp.NormalizeRealmName(GetRealmName()))] = true
-		for i, realm in ipairs(GetAutoCompleteRealms()) do
-			self.SameRealm[(Chomp.NormalizeRealmName(realm))] = true
+		if not Chomp.RegionalUniqueNamesEnabled() then
+			self.SameRealm[(Chomp.NormalizeRealmName(GetRealmName()))] = true
+			for i, realm in ipairs(GetAutoCompleteRealms()) do
+				self.SameRealm[(Chomp.NormalizeRealmName(realm))] = true
+			end
 		end
 		Internal.isReady = true
 		if self.IncomingQueue then
