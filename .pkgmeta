@@ -10,5 +10,6 @@ externals:
 ignore:
   - Libs/*/*.toc
   - Libs/*/tests
+  - Tests/*
   - .gitkeep
-  - Makefile
+  - justfile

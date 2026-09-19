@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -20,7 +20,7 @@ jobs:
           annotate: warning
 
       - name: Create Package
-        uses: BigWigsMods/packager@master
+        uses: BigWigsMods/packager@v2
         env:
           GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
         with:

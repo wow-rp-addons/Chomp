@@ -6,8 +6,9 @@ max_string_line_length = false
 max_comment_line_length = false
 
 exclude_files = {
-    ".release",
-    "Libs/*",
+	".luarocks",
+	".release",
+	"Libs/*",
 }
 
 std = "lua51"
@@ -21,9 +22,6 @@ globals = {
 }
 
 read_globals = {
-	-- UTF8 library (optional dependency)
-	"string.utf8lower",
-
 	-- LibStub
 	"LibStub.GetLibrary",
 	"LibStub.NewLibrary",
@@ -46,7 +44,10 @@ read_globals = {
 	"C_BattleNet.GetGameAccountInfoByID",
 	"C_ChatInfo.IsAddonMessagePrefixRegistered",
 	"C_ChatInfo.RegisterAddonMessagePrefix",
+	"C_Intl.FoldCase",
 	"ChatFrame_AddMessageEventFilter",
+	"Constants.CharacterNameSeparatorConsts.CHARACTERNAME_REALMNAME_SEPARATOR",
+	"Constants.CharacterNameSeparatorConsts.CHARACTERNAME_SURNAME_SEPARATOR",
 	"CreateFrame",
 	"ERR_CHAT_PLAYER_NOT_FOUND_S",
 	"GetAutoCompleteRealms",
@@ -56,8 +57,10 @@ read_globals = {
 	"GetTime",
 	"hooksecurefunc",
 	"IsLoggedIn",
+	"RegionalUniqueNamesEnabled",
 	"securecallfunction",
 	"strcmputf8i",
+	"string.contains",
 	"string.join",
 	"string.split",
 	"tInvert",
