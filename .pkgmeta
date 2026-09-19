@@ -12,4 +12,4 @@ ignore:
   - Libs/*/tests
   - Tests/*
   - .gitkeep
-  - Justfile
+  - justfile
