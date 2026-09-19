@@ -99,6 +99,26 @@ end
 function ChatThrottleLib.BNSendGameData()
 end
 
+LibStub = {
+	libs = {},
+}
+
+function LibStub:NewLibrary(name)
+	local library = {}
+	self.libs[name] = library
+	return library
+end
+
+function LibStub:GetLibrary(name)
+	return self.libs[name]
+end
+
+LibStub.libs["CallbackHandler-1.0"] = {
+	New = function()
+		return {}
+	end,
+}
+
 local function LoadFile(path, ...)
 	local chunk = assert(loadfile(ROOT_DIRECTORY .. path))
 	return chunk(...)
@@ -199,8 +219,6 @@ function RegionalUniqueNamesEnabled()
 	return false
 end
 
-LoadFile("Libs/LibStub/LibStub.lua")
-LoadFile("Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua")
 LoadFile("Internal.lua", "Chomp")
 LoadFile("Public.lua")
 LoadFile("StringManip.lua")
