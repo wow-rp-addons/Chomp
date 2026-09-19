@@ -6,10 +6,23 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - uses: extractions/setup-just@v4
+
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
+
+      - name: Set up Lua
+        uses: leafo/gh-actions-lua@v13
+        with:
+          luaVersion: 5.1
+
+      - name: Set up LuaRocks
+        uses: leafo/gh-actions-luarocks@v6
+
+      - name: Install Lua test dependencies
+        run: luarocks install busted
 
       - name: Run Luacheck
         uses: nebularg/actions-luacheck@v1
@@ -17,12 +30,15 @@ jobs:
           args: --no-color -q
           annotate: warning
 
+      - name: Run Tests
+        run: just test
+
       - name: Create Package
-        uses: BigWigsMods/packager@master
+        uses: BigWigsMods/packager@v2
         with:
           args: -d -z -S
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: Chomp-PR-${{ github.event.number }}
           path: .release/
