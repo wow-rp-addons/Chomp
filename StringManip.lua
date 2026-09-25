@@ -107,7 +107,7 @@ end
 
 function Chomp.NameSplitRealm(nameRealm)
 	if Chomp.RegionalUniqueNamesEnabled() then
-		return
+		return nameRealm
 	end
 
 	local name, realm = string.split(Chomp.REALM_NAME_SEPARATOR, nameRealm, 2)
