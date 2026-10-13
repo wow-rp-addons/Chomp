@@ -44,6 +44,7 @@ read_globals = {
 	"C_BattleNet.GetGameAccountInfoByID",
 	"C_ChatInfo.IsAddonMessagePrefixRegistered",
 	"C_ChatInfo.RegisterAddonMessagePrefix",
+	"C_Intl.CompareStrings",
 	"C_Intl.FoldCase",
 	"ChatFrame_AddMessageEventFilter",
 	"Constants.CharacterNameSeparatorConsts.CHARACTERNAME_REALMNAME_SEPARATOR",

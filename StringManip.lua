@@ -640,5 +640,9 @@ function Chomp.InsensitiveStringEquals(a, b)
 		return false
 	end
 
-	return strcmputf8i(a, b) == 0
+	if C_Intl then
+		return (C_Intl.CompareStrings(a, b, Enum.CollationStrength.Secondary) == 0)
+	else
+		return (strcmputf8i(a, b) == 0)
+	end
 end
