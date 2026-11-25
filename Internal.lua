@@ -14,7 +14,7 @@
 	CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ]]
 
-local VERSION = 39
+local VERSION = 40
 
 if IsLoggedIn() then
 	error(("Chomp Message Library (embedded: %s) cannot be loaded after login."):format((...)))
@@ -201,8 +201,8 @@ local function HandleMessageIn(prefix, text, channel, sender, target, zoneChanne
 				end
 			end
 			if prefixData.validTypes[type(handlerData)] then
-				securecallfunction(prefixData.callback, prefix, handlerData, channel, sender, target, zoneChannelID, localID, name, instanceID, nil, nil, nil, sessionID, msgID, msgTotal, bitField)
-				Internal:TriggerEvent("OnMessageReceived", prefix, handlerData, channel, sender, target, zoneChannelID, localID, name, instanceID, nil, nil, nil, sessionID, msgID, msgTotal, bitField)
+				securecallfunction(prefixData.callback, prefix, handlerData, channel, sender, target, zoneChannelID, localID, name, instanceID, nil, nil, nil, sessionID, i, msgTotal, bitField)
+				Internal:TriggerEvent("OnMessageReceived", prefix, handlerData, channel, sender, target, zoneChannelID, localID, name, instanceID, nil, nil, nil, sessionID, i, msgTotal, bitField)
 			end
 			buffer[i] = false
 			if i == msgTotal then

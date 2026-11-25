@@ -1,4 +1,5 @@
 -- luacheck: globals describe it before_each after_each mock stub
+-- luacheck: read globals assert.same
 
 local Chomp = require("SpecHelper")
 local Internal = Chomp.Internal
@@ -9,6 +10,91 @@ describe("Chomp", function()
 		assert(type(Chomp.Internal) == "table")
 		assert(type(Chomp.Serialize) == "function")
 		assert(type(Chomp.Deserialize) == "function")
+	end)
+end)
+
+describe("Chomp logged whisper delivery", function()
+	local prefix = "ChompTest"
+	local sessionID = 0x4C6
+	local wasReady
+	local raw, delivered, received
+
+	local function Record(into, _, text, ...)
+		-- Skip the remaining event arguments to reach the Chomp chunk metadata.
+		local streamID, msgID, msgTotal = select(11, ...)
+		into[#into + 1] = { text, streamID, msgID, msgTotal }
+	end
+
+	local function DeliverChunk(msgID, text)
+		-- Replay the logged whisper event with a Chomp header for a three-chunk session.
+		local packet = ("%03X%03X%03X%03X%s"):format(0x00A, sessionID, msgID, 3, text)
+		Internal:handler("CHAT_MSG_ADDON_LOGGED", prefix, packet, "WHISPER", "Sender", "Test")
+	end
+
+	local function RegisterPrefix(fullMsgOnly)
+		Chomp.RegisterAddonPrefix(prefix, function(...)
+			Record(delivered, ...)
+		end, {
+			fullMsgOnly = fullMsgOnly,
+			rawCallback = function(...) Record(raw, ...) end,
+		})
+	end
+
+	before_each(function()
+		wasReady = Internal.isReady
+		Internal.isReady = true
+		raw, delivered, received = {}, {}, {}
+		stub(Internal, "TriggerEvent", function(_, event, ...)
+			if event == "OnMessageReceived" then
+				Record(received, ...)
+			end
+		end)
+	end)
+
+	after_each(function()
+		Internal.isReady = wasReady
+		Internal.Prefixes[prefix] = nil
+	end)
+
+	it("reports each delivered chunk's ID in incremental mode", function()
+		RegisterPrefix(false)
+		local first = { "first", sessionID, 1, 3 }
+		local middle = { "middle", sessionID, 2, 3 }
+		local last = { "last", sessionID, 3, 3 }
+
+		-- Chunk 3 arrives early. Only chunk 1 can be delivered until the gap closes.
+		DeliverChunk(1, "first")
+		DeliverChunk(3, "last")
+		assert.same({ first }, delivered)
+		assert.same({ first }, received)
+
+		-- Chunk 2 releases both pending chunks, but must not supply the ID for both.
+		DeliverChunk(2, "middle")
+		assert.same({ first, last, middle }, raw)
+		assert.same({ first, middle, last }, delivered)
+		assert.same({ first, middle, last }, received)
+	end)
+
+	it("reports the final chunk ID in whole-message mode", function()
+		RegisterPrefix(true)
+
+		-- Even with the final chunk buffered, neither processed callback can run yet.
+		DeliverChunk(1, "first")
+		DeliverChunk(3, "last")
+		assert.same({}, delivered)
+		assert.same({}, received)
+
+		-- Chunk 2 completes assembly, but the whole message must report 3/3, not 2/3.
+		DeliverChunk(2, "middle")
+		assert.same({
+			{ "first", sessionID, 1, 3 },
+			{ "last", sessionID, 3, 3 },
+			{ "middle", sessionID, 2, 3 },
+		}, raw)
+
+		local expected = { { "firstmiddlelast", sessionID, 3, 3 } }
+		assert.same(expected, delivered)
+		assert.same(expected, received)
 	end)
 end)
 
