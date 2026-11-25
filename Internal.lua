@@ -14,7 +14,7 @@
 	CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ]]
 
-local VERSION = 40
+local VERSION = 41
 
 if IsLoggedIn() then
 	error(("Chomp Message Library (embedded: %s) cannot be loaded after login."):format((...)))
@@ -447,7 +447,6 @@ end
 ]]
 
 Internal:Hide()
-Internal:RegisterEvent("ADDON_LOADED")
 Internal:RegisterEvent("CHAT_MSG_ADDON")
 Internal:RegisterEvent("CHAT_MSG_ADDON_LOGGED")
 Internal:RegisterEvent("BN_CHAT_MSG_ADDON")
@@ -508,13 +507,6 @@ Internal:SetScript("OnEvent", function(self, event, ...)
 		end
 		self.unloadTime = nil
 		Internal:UpdateBattleNetAccountData()
-	elseif event == "ADDON_LOADED" then
-		-- Tweak CTL's conservative estimates.
-		if WOW_PROJECT_ID == WOW_PROJECT_MAINLINE then
-			ChatThrottleLib.BURST = math.max(ChatThrottleLib.BURST, 6144)
-			ChatThrottleLib.MAX_CPS = math.max(ChatThrottleLib.MAX_CPS, 2048)
-			ChatThrottleLib.MSG_OVERHEAD = math.min(32, ChatThrottleLib.MSG_OVERHEAD)
-		end
 	end
 end)
 
